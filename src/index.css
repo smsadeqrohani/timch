@@ -1,0 +1,125 @@
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-light: #ffffff;
+  --color-dark: #171717;
+}
+
+.accent-text {
+  @apply text-slate-600;
+}
+
+body {
+  font-family: 'Vazirmatn', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  direction: rtl;
+  color: var(--color-dark);
+  background: var(--color-light);
+}
+
+/* RTL support for inputs */
+input[type="email"], input[type="password"] {
+  direction: ltr;
+  text-align: left;
+}
+
+/* Auth input fields with proper visibility */
+.auth-input-field {
+  @apply w-full px-4 py-3 rounded-lg border outline-none transition-all duration-200;
+  background-color: rgb(255 255 255);
+  border-color: rgb(209 213 219);
+  color: rgb(17 24 39) !important;
+}
+
+.auth-input-field:focus {
+  border-color: rgb(59 130 246);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+}
+
+.auth-input-field::placeholder {
+  color: rgb(107 114 128) !important;
+}
+
+/* Dark mode styles for auth inputs */
+.dark .auth-input-field {
+  background-color: rgb(31 41 55) !important;
+  border-color: rgb(75 85 99) !important;
+  color: rgb(243 244 246) !important;
+}
+
+.dark .auth-input-field:focus {
+  border-color: rgb(96 165 250) !important;
+  box-shadow: 0 0 0 3px rgb(96 165 250 / 0.1) !important;
+}
+
+.dark .auth-input-field::placeholder {
+  color: rgb(156 163 175) !important;
+}
+
+/* Auth buttons with improved styling */
+.auth-button {
+  @apply w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 shadow-sm;
+  background: linear-gradient(135deg, rgb(59 130 246), rgb(37 99 235));
+  color: rgb(255 255 255);
+  border: none;
+}
+
+.auth-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgb(37 99 235), rgb(29 78 216));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgb(59 130 246 / 0.4);
+}
+
+.auth-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.dark .auth-button {
+  background: linear-gradient(135deg, rgb(96 165 250), rgb(59 130 246));
+  color: rgb(17 24 39);
+}
+
+.dark .auth-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgb(59 130 246), rgb(37 99 235));
+  box-shadow: 0 4px 20px rgb(96 165 250 / 0.4);
+}
+
+/* Custom scrollbar for dark mode */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400 dark:bg-gray-500;
+}
+
+/* Smooth transitions */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* Glass effect for cards */
+.glass-card {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark .glass-card {
+  background: rgba(31, 41, 55, 0.8);
+  border: 1px solid rgba(75, 85, 99, 0.2);
+}
