@@ -355,6 +355,38 @@ input[type="email"], input[type="password"] {
     color: black !important;
   }
   
+  /* Force all text to be black in print */
+  * {
+    color: black !important;
+  }
+  
+  /* Override specific text colors for print */
+  h1, h2, h3, h4, h5, h6 {
+    color: black !important;
+  }
+  
+  p, span, div {
+    color: black !important;
+  }
+  
+  /* Table text should be black */
+  th, td {
+    color: black !important;
+  }
+  
+  /* Print-only elements should have black text */
+  .print-only p {
+    color: black !important;
+  }
+  
+  .print-only span {
+    color: black !important;
+  }
+  
+  .print-only div {
+    color: black !important;
+  }
+  
   .glass-card {
     box-shadow: none !important;
     border: 1px solid #ccc !important;
@@ -448,5 +480,10 @@ input[type="email"], input[type="password"] {
     margin-bottom: 8px !important;
     line-height: 1.4 !important;
     text-align: right !important;
+    color: black !important;
+  }
+  
+  .print-only li span {
+    color: black !important;
   }
 }

@@ -37,7 +37,7 @@ function Content() {
 
   return (
     <div className="w-full">
-      <div className="text-center mb-8">
+      <div className="text-center mb-8 no-print">
         <div className="mb-6">
           <h1 className="text-6xl font-bold mb-4 bg-gradient-to-r bg-clip-text text-transparent from-blue-400 via-purple-400 to-pink-400">
             خوش آمدید
@@ -45,16 +45,16 @@ function Content() {
           <div className="w-24 h-1 mx-auto rounded-full bg-gradient-to-r from-blue-400 to-purple-400"></div>
         </div>
         
-        <Authenticated>
-          <ChequeCalculator />
-        </Authenticated>
-        
         <Unauthenticated>
           <p className="text-xl mb-8 text-gray-300">
             برای شروع وارد شوید یا ثبت نام کنید
           </p>
         </Unauthenticated>
       </div>
+      
+      <Authenticated>
+        <ChequeCalculator />
+      </Authenticated>
 
       <Unauthenticated>
         <div className="glass-card p-8 rounded-2xl shadow-xl shadow-gray-900/50">
