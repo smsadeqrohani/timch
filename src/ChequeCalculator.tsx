@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { PersianDatePicker } from './components/PersianDatePicker';
 import { calculateInstallments, formatCurrency, CalculationResult } from './utils/calculationUtils';
 import { getCurrentJalaliDate, formatJalaliDate, getInstallmentDate, parseJalaliDate, isValidJalaliDate, formatJalaliDateWithPersianNumbers } from './utils/dateUtils';
-import { useDarkMode } from './hooks/useDarkMode';
 import logoImage from './LOGO.png';
 
 interface FormData {
@@ -43,7 +42,6 @@ const cleanNumberInput = (value: string): string => {
 };
 
 export const ChequeCalculator: React.FC = () => {
-  const { isDark } = useDarkMode();
   const [formData, setFormData] = useState<FormData>({
     invoiceNumber: '',
     invoiceDate: '',
@@ -190,12 +188,8 @@ export const ChequeCalculator: React.FC = () => {
   return (
     <div className="w-full">
       {/* Form Section - Full Width */}
-      <div className={`glass-card p-8 rounded-2xl shadow-xl mb-8 no-print ${
-        isDark ? 'shadow-gray-900/50' : 'shadow-gray-200/50'
-      }`}>
-        <h2 className={`text-lg font-semibold mb-6 ${
-          isDark ? 'text-gray-200' : 'text-gray-800'
-        }`}>
+      <div className="glass-card p-8 rounded-2xl shadow-xl mb-8 no-print shadow-gray-900/50">
+        <h2 className="text-lg font-semibold mb-6 text-gray-200">
           اطلاعات فاکتور
         </h2>
         
@@ -215,9 +209,7 @@ export const ChequeCalculator: React.FC = () => {
             )}
 
             <div>
-              <label className={`block text-sm font-medium mb-2 ${
-                isDark ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <label className="block text-sm font-medium mb-2 text-gray-300">
                 شماره فاکتور
               </label>
               <input
@@ -237,9 +229,7 @@ export const ChequeCalculator: React.FC = () => {
             </div>
 
             <div>
-              <label className={`block text-sm font-medium mb-2 ${
-                isDark ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <label className="block text-sm font-medium mb-2 text-gray-300">
                 نام خریدار
               </label>
               <input
@@ -255,9 +245,7 @@ export const ChequeCalculator: React.FC = () => {
             </div>
 
             <div>
-              <label className={`block text-sm font-medium mb-2 ${
-                isDark ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <label className="block text-sm font-medium mb-2 text-gray-300">
                 نوع ضمانت
               </label>
               <select
@@ -280,9 +268,7 @@ export const ChequeCalculator: React.FC = () => {
           {/* Second Row: Total Amount, Down Payment, Number of Installments, Annual Rate */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className={`block text-sm font-medium mb-2 ${
-                isDark ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <label className="block text-sm font-medium mb-2 text-gray-300">
                 مبلغ کل فاکتور (ریال)
               </label>
               <input
@@ -303,9 +289,7 @@ export const ChequeCalculator: React.FC = () => {
             </div>
 
             <div>
-              <label className={`block text-sm font-medium mb-2 ${
-                isDark ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <label className="block text-sm font-medium mb-2 text-gray-300">
                 پیش‌پرداخت (ریال)
               </label>
               <input
@@ -326,9 +310,7 @@ export const ChequeCalculator: React.FC = () => {
             </div>
 
             <div>
-              <label className={`block text-sm font-medium mb-2 ${
-                isDark ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <label className="block text-sm font-medium mb-2 text-gray-300">
                 تعداد اقساط
               </label>
               <input
@@ -347,9 +329,7 @@ export const ChequeCalculator: React.FC = () => {
             </div>
 
             <div>
-              <label className={`block text-sm font-medium mb-2 ${
-                isDark ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <label className="block text-sm font-medium mb-2 text-gray-300">
                 نرخ سود سالانه (%)
               </label>
               <input
@@ -392,9 +372,7 @@ export const ChequeCalculator: React.FC = () => {
       {calculationResult && (
         <>
           {/* Summary Card */}
-          <div className={`glass-card p-8 rounded-2xl shadow-xl mb-6 ${
-            isDark ? 'shadow-gray-900/50' : 'shadow-gray-200/50'
-          }`}>
+          <div className="glass-card p-8 rounded-2xl shadow-xl mb-6 shadow-gray-900/50">
             <div className="print-only mb-6">
               <div className="grid grid-cols-2 gap-8 items-center">
                 <div className="flex items-center justify-center">
@@ -407,57 +385,55 @@ export const ChequeCalculator: React.FC = () => {
               <div className="border-t border-gray-300 mt-4 pt-2"></div>
             </div>
             
-            <h2 className={`text-lg font-semibold mb-4 ${
-              isDark ? 'text-gray-200' : 'text-gray-800'
-            }`}>
+            <h2 className="text-lg font-semibold mb-4 text-gray-200">
               خلاصه قرارداد
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print-grid-cols-2">
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>شماره فاکتور:</span>
-                  <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{toPersianNumbers(calculationResult.summary.invoiceNumber)}</span>
+                  <span className="text-gray-300">شماره فاکتور:</span>
+                  <span className="font-medium text-gray-200">{toPersianNumbers(calculationResult.summary.invoiceNumber)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>نام خریدار:</span>
-                  <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{calculationResult.summary.customerName}</span>
+                  <span className="text-gray-300">نام خریدار:</span>
+                  <span className="font-medium text-gray-200">{calculationResult.summary.customerName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>تاریخ فاکتور:</span>
-                  <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{formatJalaliDateWithPersianNumbers(calculationResult.summary.invoiceDate)}</span>
+                  <span className="text-gray-300">تاریخ فاکتور:</span>
+                  <span className="font-medium text-gray-200">{formatJalaliDateWithPersianNumbers(calculationResult.summary.invoiceDate)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>مبلغ کل:</span>
-                  <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{formatCurrency(calculationResult.summary.totalAmount)}</span>
+                  <span className="text-gray-300">مبلغ کل:</span>
+                  <span className="font-medium text-gray-200">{formatCurrency(calculationResult.summary.totalAmount)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>پیش‌پرداخت:</span>
-                  <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{formatCurrency(calculationResult.summary.downPayment)}</span>
+                  <span className="text-gray-300">پیش‌پرداخت:</span>
+                  <span className="font-medium text-gray-200">{formatCurrency(calculationResult.summary.downPayment)}</span>
                 </div>
               </div>
               
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>مانده برای اقساط:</span>
-                  <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{formatCurrency(calculationResult.summary.principalAmount)}</span>
+                  <span className="text-gray-300">مانده برای اقساط:</span>
+                  <span className="font-medium text-gray-200">{formatCurrency(calculationResult.summary.principalAmount)}</span>
                 </div>
 
                 <div className="flex justify-between">
-                  <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>تعداد اقساط:</span>
-                  <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{toPersianNumbers(calculationResult.summary.numberOfInstallments.toString())}</span>
+                  <span className="text-gray-300">تعداد اقساط:</span>
+                  <span className="font-medium text-gray-200">{toPersianNumbers(calculationResult.summary.numberOfInstallments.toString())}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>جمع سود:</span>
-                  <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{formatCurrency(calculationResult.summary.totalInterest)}</span>
+                  <span className="text-gray-300">جمع سود:</span>
+                  <span className="font-medium text-gray-200">{formatCurrency(calculationResult.summary.totalInterest)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>جمع کل پرداختی:</span>
-                  <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{formatCurrency(calculationResult.summary.totalPayment)}</span>
+                  <span className="text-gray-300">جمع کل پرداختی:</span>
+                  <span className="font-medium text-gray-200">{formatCurrency(calculationResult.summary.totalPayment)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>نوع ضمانت:</span>
-                  <span className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{formData.guaranteeType === 'cheque' ? 'چک' : formData.guaranteeType === 'gold' ? 'طلا' : '-'}</span>
+                  <span className="text-gray-300">نوع ضمانت:</span>
+                  <span className="font-medium text-gray-200">{formData.guaranteeType === 'cheque' ? 'چک' : formData.guaranteeType === 'gold' ? 'طلا' : '-'}</span>
                 </div>
 
               </div>
@@ -465,13 +441,9 @@ export const ChequeCalculator: React.FC = () => {
           </div>
 
           {/* Installments Table */}
-          <div className={`glass-card p-8 rounded-2xl shadow-xl ${
-            isDark ? 'shadow-gray-900/50' : 'shadow-gray-200/50'
-          }`}>
+          <div className="glass-card p-8 rounded-2xl shadow-xl shadow-gray-900/50">
             <div className="flex justify-between items-center mb-4">
-              <h2 className={`text-lg font-semibold ${
-                isDark ? 'text-gray-200' : 'text-gray-800'
-              }`}>
+              <h2 className="text-lg font-semibold text-gray-200">
                 جدول اقساط
               </h2>
               <div className="flex space-x-2 space-x-reverse no-print">
@@ -493,30 +465,18 @@ export const ChequeCalculator: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className={isDark ? 'bg-gray-700' : 'bg-gray-50'}>
-                    <th className={`border px-4 py-2 text-right ${
-                      isDark ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-900'
-                    }`}>شماره قسط</th>
-                    <th className={`border px-4 py-2 text-right ${
-                      isDark ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-900'
-                    }`}>تاریخ سررسید</th>
-                    <th className={`border px-4 py-2 text-right ${
-                      isDark ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-900'
-                    }`}>مبلغ قسط</th>
+                  <tr className="bg-gray-700">
+                    <th className="border px-4 py-2 text-right border-gray-600 text-gray-200">شماره قسط</th>
+                    <th className="border px-4 py-2 text-right border-gray-600 text-gray-200">تاریخ سررسید</th>
+                    <th className="border px-4 py-2 text-right border-gray-600 text-gray-200">مبلغ قسط</th>
                   </tr>
                 </thead>
                 <tbody>
                   {calculationResult.installments.map((installment, index) => (
-                    <tr key={installment.installmentNumber} className={index % 2 === 0 ? (isDark ? 'bg-gray-800' : 'bg-white') : (isDark ? 'bg-gray-700' : 'bg-gray-50')}>
-                      <td className={`border px-4 py-2 text-center ${
-                        isDark ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-900'
-                      }`}>{toPersianNumbers(installment.installmentNumber.toString())}</td>
-                      <td className={`border px-4 py-2 text-center ${
-                        isDark ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-900'
-                      }`}>{formatJalaliDateWithPersianNumbers(installment.dueDate)}</td>
-                      <td className={`border px-4 py-2 text-left ${
-                        isDark ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-900'
-                      }`}>{formatCurrency(installment.installmentAmount)}</td>
+                    <tr key={installment.installmentNumber} className={index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-700'}>
+                      <td className="border px-4 py-2 text-center border-gray-600 text-gray-200">{toPersianNumbers(installment.installmentNumber.toString())}</td>
+                      <td className="border px-4 py-2 text-center border-gray-600 text-gray-200">{formatJalaliDateWithPersianNumbers(installment.dueDate)}</td>
+                      <td className="border px-4 py-2 text-left border-gray-600 text-gray-200">{formatCurrency(installment.installmentAmount)}</td>
                     </tr>
                   ))}
                 </tbody>
