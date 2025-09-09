@@ -90,6 +90,29 @@ input[type="email"], input[type="password"] {
   box-shadow: 0 4px 20px rgb(96 165 250 / 0.4);
 }
 
+/* Secondary button styling */
+.btn-secondary {
+  @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+  background: rgb(229 231 235);
+  color: rgb(17 24 39);
+  border: 1px solid rgb(209 213 219);
+}
+
+.btn-secondary:hover {
+  background: rgb(209 213 219);
+  transform: translateY(-1px);
+}
+
+.dark .btn-secondary {
+  background: rgb(55 65 81);
+  color: rgb(243 244 246);
+  border-color: rgb(75 85 99);
+}
+
+.dark .btn-secondary:hover {
+  background: rgb(75 85 99);
+}
+
 /* Custom scrollbar for dark mode */
 ::-webkit-scrollbar {
   width: 8px;
@@ -241,6 +264,39 @@ input[type="email"], input[type="password"] {
   color: white !important;
 }
 
+/* Ensure date picker input matches auth-input-field styling */
+.rmdp-input {
+  @apply w-full px-4 py-3 rounded-lg border outline-none transition-all duration-200;
+  background-color: rgb(255 255 255) !important;
+  border-color: rgb(209 213 219) !important;
+  color: rgb(17 24 39) !important;
+}
+
+.rmdp-input:focus {
+  border-color: rgb(59 130 246) !important;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1) !important;
+}
+
+.rmdp-input::placeholder {
+  color: rgb(107 114 128) !important;
+}
+
+/* Dark mode styles for date picker input */
+.dark .rmdp-input {
+  background-color: rgb(31 41 55) !important;
+  border-color: rgb(75 85 99) !important;
+  color: rgb(243 244 246) !important;
+}
+
+.dark .rmdp-input:focus {
+  border-color: rgb(96 165 250) !important;
+  box-shadow: 0 0 0 3px rgb(96 165 250 / 0.1) !important;
+}
+
+.dark .rmdp-input::placeholder {
+  color: rgb(156 163 175) !important;
+}
+
 /* Month and year picker dark mode */
 .rmdp-panel {
   background-color: white !important;
@@ -281,6 +337,10 @@ input[type="email"], input[type="password"] {
 }
 
 /* Print styles */
+.print-only {
+  display: none !important;
+}
+
 @media print {
   .no-print {
     display: none !important;
@@ -301,16 +361,92 @@ input[type="email"], input[type="password"] {
     background: white !important;
   }
   
+  /* Page breaks for different sections - removed as requested */
+  
+  /* Print-specific grid layout */
+  .print-grid-cols-2 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  
+  /* Ensure tables don't break across pages */
   table {
     border-collapse: collapse !important;
+    page-break-inside: avoid !important;
+    width: 100% !important;
+  }
+  
+  /* Prevent table rows from breaking across pages */
+  tr {
+    page-break-inside: avoid !important;
+  }
+  
+  /* Fix table spacing for print */
+  .overflow-x-auto {
+    overflow: visible !important;
   }
   
   th, td {
     border: 1px solid #ccc !important;
-    padding: 8px !important;
+    padding: 10px 12px !important;
+    font-size: 12px !important;
   }
   
   th {
     background-color: #f5f5f5 !important;
+    font-weight: bold !important;
+  }
+  
+  /* Optimize table layout for print */
+  tbody tr:nth-child(even) {
+    background-color: #f9f9f9 !important;
+  }
+  
+  tbody tr:nth-child(odd) {
+    background-color: white !important;
+  }
+  
+  /* Remove margins and padding for print */
+  * {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Restore padding for specific elements */
+  .glass-card {
+    padding: 16px !important;
+    margin-bottom: 0 !important;
+  }
+  
+  th, td {
+    padding: 8px !important;
+  }
+  
+  /* Ensure proper spacing for print */
+  h1, h2, h3, h4, h5, h6 {
+    margin-bottom: 8px !important;
+  }
+  
+  p {
+    margin-bottom: 4px !important;
+  }
+  
+  /* Optimize for A4 page size */
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+  
+  /* Payment instructions styling for print */
+  .print-only ul {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    direction: rtl !important;
+  }
+  
+  .print-only li {
+    margin-bottom: 8px !important;
+    line-height: 1.4 !important;
+    text-align: right !important;
   }
 }

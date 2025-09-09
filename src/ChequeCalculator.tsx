@@ -3,6 +3,7 @@ import { PersianDatePicker } from './components/PersianDatePicker';
 import { calculateInstallments, formatCurrency, CalculationResult } from './utils/calculationUtils';
 import { getCurrentJalaliDate, formatJalaliDate, getInstallmentDate, parseJalaliDate, isValidJalaliDate, formatJalaliDateWithPersianNumbers } from './utils/dateUtils';
 import { useDarkMode } from './hooks/useDarkMode';
+import logoImage from './LOGO.png';
 
 interface FormData {
   invoiceNumber: string;
@@ -187,7 +188,7 @@ export const ChequeCalculator: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="w-full">
       {/* Form Section - Full Width */}
       <div className={`glass-card p-8 rounded-2xl shadow-xl mb-8 no-print ${
         isDark ? 'shadow-gray-900/50' : 'shadow-gray-200/50'
@@ -394,13 +395,25 @@ export const ChequeCalculator: React.FC = () => {
           <div className={`glass-card p-8 rounded-2xl shadow-xl mb-6 ${
             isDark ? 'shadow-gray-900/50' : 'shadow-gray-200/50'
           }`}>
+            <div className="print-only mb-6">
+              <div className="grid grid-cols-2 gap-8 items-center">
+                <div className="flex items-center justify-center">
+                  <img src={logoImage} alt="تیمچه فرش" className="h-20 w-auto" />
+                </div>
+                <div className="text-right">
+                  <p className="text-gray-600 text-sm">تاریخ چاپ: {formatJalaliDateWithPersianNumbers(formatJalaliDate(getCurrentJalaliDate()))}</p>
+                </div>
+              </div>
+              <div className="border-t border-gray-300 mt-4 pt-2"></div>
+            </div>
+            
             <h2 className={`text-lg font-semibold mb-4 ${
               isDark ? 'text-gray-200' : 'text-gray-800'
             }`}>
               خلاصه قرارداد
             </h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print-grid-cols-2">
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className={isDark ? 'text-gray-300' : 'text-gray-600'}>شماره فاکتور:</span>
@@ -508,6 +521,24 @@ export const ChequeCalculator: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+            
+            {/* Payment Instructions */}
+            <div className="print-only mt-16 pt-8 border-t border-gray-300">
+              <ul className="space-y-3 text-sm text-gray-700" dir="rtl">
+                <li className="flex items-start">
+                  <span className="text-gray-500 mr-2 mt-1">•</span>
+                  <span>خواهشمند است مبلغ اقساط را به شماره‌کارت {toPersianNumbers('4620-0578-0610-5047')} به‌نام آقای سیدمحمود برقعی واریز نمایید.</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-gray-500 mr-2 mt-1">•</span>
+                  <span>بعد از واریز هر قسط، اطلاع واریزی را همراه با شماره صفحه اقساط به شماره {toPersianNumbers('09352334898')} به‌صورت پیامک یا واتساپ جهت ثبت در حساب ارسال کنید.</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-gray-500 mr-2 mt-1">•</span>
+                  <span>وجه الضمانه اقساط تا تسویه حساب کامل نزد فروشگاه باقی می‌ماند. از درخواست استرداد آن قبل از موعد خودداری فرمایید.</span>
+                </li>
+              </ul>
             </div>
           </div>
         </>

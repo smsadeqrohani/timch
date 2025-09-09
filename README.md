@@ -1,6 +1,6 @@
-# Persian Auth App with Dark Mode
+# سامانه تیمچه فرش (Timche Farsh System)
   
-This is a project built with [Chef](https://chef.convex.dev) using [Convex](https://convex.dev) as its backend.
+This is a Persian installment calculation system built with [Chef](https://chef.convex.dev) using [Convex](https://convex.dev) as its backend.
  You can find docs about Chef with useful information like how to deploy to production [here](https://docs.convex.dev/chef).
   
 This project is connected to the Convex deployment named [`academic-bear-16`](https://dashboard.convex.dev/d/academic-bear-16).

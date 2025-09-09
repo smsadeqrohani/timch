@@ -58,7 +58,9 @@ export const PersianDatePicker: React.FC<PersianDatePickerProps> = ({
 
   return (
     <div className="relative">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+      <label className={`block text-sm font-medium mb-2 ${
+        'text-gray-700 dark:text-gray-300'
+      }`}>
         {label}
       </label>
       <DatePicker
@@ -70,9 +72,9 @@ export const PersianDatePicker: React.FC<PersianDatePickerProps> = ({
         format="YYYY/MM/DD"
         digits={["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"]}
         placeholder={placeholder}
-        inputClass="input-field cursor-pointer text-right"
+        inputClass="auth-input-field cursor-pointer text-right"
         containerClassName="w-full"
-        className="input-field cursor-pointer text-right"
+        className="auth-input-field cursor-pointer text-right"
       />
     </div>
   );
