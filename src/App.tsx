@@ -5,6 +5,7 @@ import { SignOutButton } from "./SignOutButton";
 import { Toaster } from "sonner";
 import { DarkModeToggle } from "./DarkModeToggle";
 import { useDarkMode } from "./hooks/useDarkMode";
+import { ChequeCalculator } from "./ChequeCalculator";
 
 export default function App() {
   const { isDark } = useDarkMode();
@@ -70,7 +71,7 @@ function Content() {
           }`}>
             سلام {loggedInUser?.email ?? "کاربر عزیز"}! 🎉
           </p>
-          <div className={`glass-card p-8 rounded-2xl shadow-xl ${
+          <div className={`glass-card p-8 rounded-2xl shadow-xl mb-8 ${
             isDark ? 'shadow-gray-900/50' : 'shadow-gray-200/50'
           }`}>
             <div className="flex items-center justify-center mb-4">
@@ -96,6 +97,7 @@ function Content() {
               </p>
             </div>
           </div>
+          <ChequeCalculator />
         </Authenticated>
         
         <Unauthenticated>
