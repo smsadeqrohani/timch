@@ -40,25 +40,27 @@ function Content() {
       </Authenticated>
 
       <Unauthenticated>
-        <div className="min-h-screen flex flex-col justify-center items-center p-8">
-          <div className="text-center mb-8">
-            <div className="mb-6">
-              <h1 className="text-6xl font-bold mb-4 bg-gradient-to-r bg-clip-text text-transparent from-blue-400 via-purple-400 to-pink-400">
+        <div className="min-h-screen flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8">
+          <div className="text-center mb-6 sm:mb-8">
+            <div className="mb-4 sm:mb-6">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 bg-gradient-to-r bg-clip-text text-transparent from-blue-400 via-purple-400 to-pink-400">
                 خوش آمدید
               </h1>
-              <div className="w-24 h-1 mx-auto rounded-full bg-gradient-to-r from-blue-400 to-purple-400"></div>
+              <div className="w-16 sm:w-20 lg:w-24 h-1 mx-auto rounded-full bg-gradient-to-r from-blue-400 to-purple-400"></div>
             </div>
-            <p className="text-xl mb-8 text-gray-300">
+            <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-gray-300 px-4">
               برای شروع وارد شوید یا ثبت نام کنید
             </p>
           </div>
           
-          <div className="glass-card p-8 rounded-2xl shadow-xl shadow-gray-900/50">
-            {isSignUp ? (
-              <SignUpForm onToggleMode={toggleMode} />
-            ) : (
-              <SignInForm onToggleMode={toggleMode} />
-            )}
+          <div className="w-full max-w-md sm:max-w-lg lg:max-w-xl">
+            <div className="glass-card p-6 sm:p-8 rounded-2xl shadow-xl shadow-gray-900/50">
+              {isSignUp ? (
+                <SignUpForm onToggleMode={toggleMode} />
+              ) : (
+                <SignInForm onToggleMode={toggleMode} />
+              )}
+            </div>
           </div>
         </div>
       </Unauthenticated>

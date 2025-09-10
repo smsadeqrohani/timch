@@ -12,9 +12,9 @@ export function SignInForm({ onToggleMode }: SignInFormProps) {
   const [submitting, setSubmitting] = useState(false);
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-6">
       <form
-        className="flex flex-col gap-form-field"
+        className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
           setSubmitting(true);
@@ -46,17 +46,17 @@ export function SignInForm({ onToggleMode }: SignInFormProps) {
           placeholder="رمز عبور"
           required
         />
-        <button className="auth-button" type="submit" disabled={submitting}>
+        <button className="auth-button mt-2" type="submit" disabled={submitting}>
           ورود
         </button>
       </form>
-      <div className="mt-4 text-center">
+      <div className="text-center">
         <p className="text-gray-400 text-sm">
           حساب کاربری ندارید؟{" "}
           <button
             type="button"
             onClick={onToggleMode}
-            className="text-blue-400 hover:text-blue-300 underline"
+            className="text-blue-400 hover:text-blue-300 underline transition-colors duration-200"
           >
             ثبت نام کنید
           </button>

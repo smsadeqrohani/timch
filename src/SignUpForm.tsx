@@ -12,15 +12,23 @@ export function SignUpForm({ onToggleMode }: SignUpFormProps) {
   const [submitting, setSubmitting] = useState(false);
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-6">
       <form
-        className="flex flex-col gap-form-field"
+        className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
           setSubmitting(true);
           const formData = new FormData(e.target as HTMLFormElement);
+          const name = formData.get("name") as string;
           const password = formData.get("password") as string;
           const confirmPassword = formData.get("confirmPassword") as string;
+          
+          // Validate name
+          if (!name || name.trim().length === 0) {
+            toast.error("لطفاً نام خود را وارد کنید.");
+            setSubmitting(false);
+            return;
+          }
           
           // Validate password confirmation
           if (password !== confirmPassword) {
@@ -48,6 +56,13 @@ export function SignUpForm({ onToggleMode }: SignUpFormProps) {
       >
         <input
           className="auth-input-field"
+          type="text"
+          name="name"
+          placeholder="نام کاربر"
+          required
+        />
+        <input
+          className="auth-input-field"
           type="email"
           name="email"
           placeholder="ایمیل"
@@ -68,17 +83,17 @@ export function SignUpForm({ onToggleMode }: SignUpFormProps) {
           placeholder="تکرار رمز عبور"
           required
         />
-        <button className="auth-button" type="submit" disabled={submitting}>
+        <button className="auth-button mt-2" type="submit" disabled={submitting}>
           ثبت نام
         </button>
       </form>
-      <div className="mt-4 text-center">
+      <div className="text-center">
         <p className="text-gray-400 text-sm">
           قبلاً ثبت نام کرده‌اید؟{" "}
           <button
             type="button"
             onClick={onToggleMode}
-            className="text-blue-400 hover:text-blue-300 underline"
+            className="text-blue-400 hover:text-blue-300 underline transition-colors duration-200"
           >
             وارد شوید
           </button>

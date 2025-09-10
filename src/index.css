@@ -26,17 +26,15 @@ input[type="email"], input[type="password"] {
   text-align: left;
 }
 
-/* Form spacing */
-.gap-form-field {
-  @apply gap-4;
-}
+/* Form spacing - using standard Tailwind gap classes */
 
 /* Auth input fields with proper visibility */
 .auth-input-field {
-  @apply w-full px-4 py-3 rounded-lg border outline-none transition-all duration-200;
+  @apply w-full px-4 py-3 rounded-lg border outline-none transition-all duration-200 text-base;
   background-color: rgb(255 255 255);
   border-color: rgb(209 213 219);
   color: rgb(17 24 39) !important;
+  min-height: 48px;
 }
 
 .auth-input-field:focus {
@@ -66,10 +64,11 @@ input[type="email"], input[type="password"] {
 
 /* Auth buttons with improved styling */
 .auth-button {
-  @apply w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 shadow-sm;
+  @apply w-full px-4 py-3 rounded-lg font-semibold transition-all duration-200 shadow-sm text-base;
   background: linear-gradient(135deg, rgb(59 130 246), rgb(37 99 235));
   color: rgb(255 255 255);
   border: none;
+  min-height: 48px;
 }
 
 .auth-button:hover:not(:disabled) {

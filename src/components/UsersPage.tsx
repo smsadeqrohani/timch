@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { useAuthActions } from '@convex-dev/auth/react';
 import { api } from '../../convex/_generated/api';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ interface User {
 export const UsersPage: React.FC = () => {
   const users = useQuery(api.auth.getAllUsers);
   const { signIn } = useAuthActions();
+  const updateUserName = useMutation(api.auth.updateUserName);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddUser, setShowAddUser] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -62,13 +63,32 @@ export const UsersPage: React.FC = () => {
     setSubmitting(true);
 
     try {
+      // First, create the user through auth
       const formData = new FormData();
       formData.set("email", newUser.email);
       formData.set("password", newUser.password);
-      formData.set("name", newUser.name);
       formData.set("flow", "signUp");
 
       await signIn("password", formData);
+      
+      // Wait a moment for the user to be created, then update the name
+      setTimeout(async () => {
+        try {
+          // Find the newly created user and update their name
+          const currentUsers = await users;
+          if (currentUsers) {
+            const newUserRecord = currentUsers.find(user => user.email === newUser.email);
+            if (newUserRecord) {
+              await updateUserName({ 
+                userId: newUserRecord.id as any, 
+                name: newUser.name 
+              });
+            }
+          }
+        } catch (updateError) {
+          console.error("Error updating user name:", updateError);
+        }
+      }, 1000);
       
       toast.success("کاربر با موفقیت ایجاد شد.");
       setNewUser({ name: '', email: '', password: '', confirmPassword: '' });
