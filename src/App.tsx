@@ -36,9 +36,7 @@ function Content() {
   return (
     <div className="w-full">
       <Authenticated>
-        <AdminLayout>
-          <ChequeCalculator />
-        </AdminLayout>
+        <AdminLayout />
       </Authenticated>
 
       <Unauthenticated>

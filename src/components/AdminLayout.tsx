@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { SignOutButton } from '../SignOutButton';
+import { ChequeCalculator } from '../ChequeCalculator';
+import { UsersPage } from './UsersPage';
 
-interface AdminLayoutProps {
-  children: React.ReactNode;
-}
+interface AdminLayoutProps {}
 
 interface MenuItem {
   id: string;
@@ -20,29 +20,15 @@ const menuItems: MenuItem[] = [
     isActive: true
   },
   {
-    id: 'customers',
-    title: 'مشتریان',
+    id: 'users',
+    title: 'کاربران',
     icon: '👥'
-  },
-  {
-    id: 'invoices',
-    title: 'فاکتورها',
-    icon: '📄'
-  },
-  {
-    id: 'reports',
-    title: 'گزارشات',
-    icon: '📊'
-  },
-  {
-    id: 'settings',
-    title: 'تنظیمات',
-    icon: '⚙️'
   }
 ];
 
-export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
+export const AdminLayout: React.FC<AdminLayoutProps> = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [activePage, setActivePage] = useState('installment-calculator');
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white admin-layout" dir="rtl">
@@ -72,17 +58,17 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           <ul className="space-y-2">
             {menuItems.map((item) => (
               <li key={item.id}>
-                <a
-                  href="#"
-                  className={`flex items-center p-3 rounded-lg admin-sidebar-item ${
-                    item.isActive ? 'active' : 'text-gray-300'
+                <button
+                  onClick={() => setActivePage(item.id)}
+                  className={`flex items-center p-3 rounded-lg admin-sidebar-item w-full text-right ${
+                    activePage === item.id ? 'active' : 'text-gray-300'
                   }`}
                 >
                   <span className="text-xl ml-3">{item.icon}</span>
                   {isSidebarOpen && (
                     <span className="font-medium">{item.title}</span>
                   )}
-                </a>
+                </button>
               </li>
             ))}
           </ul>
@@ -130,7 +116,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
         {/* Page Content */}
         <main className="flex-1 p-6 overflow-auto">
-          {children}
+          {activePage === 'installment-calculator' && <ChequeCalculator />}
+          {activePage === 'users' && <UsersPage />}
         </main>
       </div>
     </div>

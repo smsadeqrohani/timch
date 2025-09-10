@@ -20,3 +20,23 @@ export const loggedInUser = query({
     return user;
   },
 });
+
+export const getAllUsers = query({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return null;
+    }
+    
+    // Get all users from the users table
+    const users = await ctx.db.query("users").collect();
+    
+    // Return only the necessary fields for the admin panel
+    return users.map(user => ({
+      id: user._id,
+      name: user.name || user.email || 'نام نامشخص',
+      email: user.email,
+      createdAt: user._creationTime ? new Date(user._creationTime).toLocaleDateString('fa-IR') : 'نامشخص'
+    }));
+  },
+});
