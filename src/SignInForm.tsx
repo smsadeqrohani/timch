@@ -3,11 +3,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-interface SignInFormProps {
-  onToggleMode: () => void;
-}
-
-export function SignInForm({ onToggleMode }: SignInFormProps) {
+export function SignInForm() {
   const { signIn } = useAuthActions();
   const [submitting, setSubmitting] = useState(false);
 
@@ -50,18 +46,6 @@ export function SignInForm({ onToggleMode }: SignInFormProps) {
           ورود
         </button>
       </form>
-      <div className="text-center">
-        <p className="text-gray-400 text-sm">
-          حساب کاربری ندارید؟{" "}
-          <button
-            type="button"
-            onClick={onToggleMode}
-            className="text-blue-400 hover:text-blue-300 underline transition-colors duration-200"
-          >
-            ثبت نام کنید
-          </button>
-        </p>
-      </div>
     </div>
   );
 }

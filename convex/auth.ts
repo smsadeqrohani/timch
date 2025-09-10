@@ -6,6 +6,46 @@ import { v } from "convex/values";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [Password, Anonymous],
+  callbacks: {
+    createOrUpdateUser: async (ctx, args) => {
+      // Extract data from the profile
+      const email = args.profile.email || "";
+      const name = args.profile.name || email.split('@')[0]; // Use email prefix as default name
+      const image = args.profile.image;
+      const tokenIdentifier = args.profile.tokenIdentifier;
+      const emailVerificationTime = args.profile.emailVerificationTime;
+      const phone = args.profile.phone;
+      const phoneVerificationTime = args.profile.phoneVerificationTime;
+      const isAnonymous = args.profile.isAnonymous;
+
+      // If user already exists, update it
+      if (args.existingUserId) {
+        await ctx.db.patch(args.existingUserId, {
+          email,
+          name,
+          image,
+          tokenIdentifier,
+          emailVerificationTime,
+          phone,
+          phoneVerificationTime,
+          isAnonymous,
+        });
+        return args.existingUserId;
+      }
+      
+      // Create new user
+      return await ctx.db.insert("users", {
+        email,
+        name,
+        image,
+        tokenIdentifier,
+        emailVerificationTime,
+        phone,
+        phoneVerificationTime,
+        isAnonymous,
+      });
+    },
+  },
 });
 
 export const loggedInUser = query({

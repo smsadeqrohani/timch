@@ -1,12 +1,10 @@
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { SignInForm } from "./SignInForm";
-import { SignUpForm } from "./SignUpForm";
 import { SignOutButton } from "./SignOutButton";
 import { Toaster } from "sonner";
 import { ChequeCalculator } from "./ChequeCalculator";
 import { AdminLayout } from "./components/AdminLayout";
-import { useState } from "react";
 
 export default function App() {
   return (
@@ -19,7 +17,6 @@ export default function App() {
 
 function Content() {
   const loggedInUser = useQuery(api.auth.loggedInUser);
-  const [isSignUp, setIsSignUp] = useState(false);
 
   if (loggedInUser === undefined) {
     return (
@@ -29,9 +26,6 @@ function Content() {
     );
   }
 
-  const toggleMode = () => {
-    setIsSignUp(!isSignUp);
-  };
 
   return (
     <div className="w-full">
@@ -49,17 +43,13 @@ function Content() {
               <div className="w-16 sm:w-20 lg:w-24 h-1 mx-auto rounded-full bg-gradient-to-r from-blue-400 to-purple-400"></div>
             </div>
             <p className="text-lg sm:text-xl mb-6 sm:mb-8 text-gray-300 px-4">
-              برای شروع وارد شوید یا ثبت نام کنید
+              برای شروع وارد شوید
             </p>
           </div>
           
           <div className="w-full max-w-md sm:max-w-lg lg:max-w-xl">
             <div className="glass-card p-6 sm:p-8 rounded-2xl shadow-xl shadow-gray-900/50">
-              {isSignUp ? (
-                <SignUpForm onToggleMode={toggleMode} />
-              ) : (
-                <SignInForm onToggleMode={toggleMode} />
-              )}
+              <SignInForm />
             </div>
           </div>
         </div>
