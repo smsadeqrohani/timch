@@ -391,6 +391,39 @@ input[type="email"], input[type="password"] {
     display: block !important;
   }
   
+  /* Hide sidebar and admin layout elements */
+  .admin-sidebar,
+  .admin-header,
+  .admin-layout > div:first-child {
+    display: none !important;
+  }
+  
+  /* Hide welcome message and title from sign in page */
+  .min-h-screen > div:first-child,
+  .text-center.mb-6,
+  .text-center.sm\\:mb-8 {
+    display: none !important;
+  }
+  
+  /* Hide page titles and headers */
+  .page-header,
+  h1:first-child,
+  .text-3xl.font-bold,
+  .text-xl.font-bold {
+    display: none !important;
+  }
+  
+  /* Make main content full width for print */
+  .admin-layout > div:last-child {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+  
+  /* Hide form section completely */
+  .form-section {
+    display: none !important;
+  }
+  
   body {
     background: white !important;
     color: black !important;
