@@ -187,6 +187,14 @@ export const ChequeCalculator: React.FC = () => {
 
   return (
     <div className="w-full">
+      {/* Page Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold bg-gradient-to-r bg-clip-text text-transparent from-blue-400 to-purple-400 mb-2">
+          محاسبه گر اقساط
+        </h1>
+        <p className="text-gray-400">محاسبه و مدیریت اقساط فروش</p>
+      </div>
+
       {/* Form Section - Full Width */}
       <div className="glass-card p-8 rounded-2xl shadow-xl mb-8 no-print shadow-gray-900/50">
         <h2 className="text-lg font-semibold mb-6 text-gray-200">
