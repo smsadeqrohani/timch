@@ -1,9 +1,11 @@
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { SignInForm } from "./SignInForm";
+import { SignUpForm } from "./SignUpForm";
 import { SignOutButton } from "./SignOutButton";
 import { Toaster } from "sonner";
 import { ChequeCalculator } from "./ChequeCalculator";
+import { useState } from "react";
 
 export default function App() {
   return (
@@ -26,6 +28,7 @@ export default function App() {
 
 function Content() {
   const loggedInUser = useQuery(api.auth.loggedInUser);
+  const [isSignUp, setIsSignUp] = useState(false);
 
   if (loggedInUser === undefined) {
     return (
@@ -34,6 +37,10 @@ function Content() {
       </div>
     );
   }
+
+  const toggleMode = () => {
+    setIsSignUp(!isSignUp);
+  };
 
   return (
     <div className="w-full">
@@ -58,7 +65,11 @@ function Content() {
 
       <Unauthenticated>
         <div className="glass-card p-8 rounded-2xl shadow-xl shadow-gray-900/50">
-          <SignInForm />
+          {isSignUp ? (
+            <SignUpForm onToggleMode={toggleMode} />
+          ) : (
+            <SignInForm onToggleMode={toggleMode} />
+          )}
         </div>
       </Unauthenticated>
     </div>

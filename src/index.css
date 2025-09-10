@@ -26,6 +26,11 @@ input[type="email"], input[type="password"] {
   text-align: left;
 }
 
+/* Form spacing */
+.gap-form-field {
+  @apply gap-4;
+}
+
 /* Auth input fields with proper visibility */
 .auth-input-field {
   @apply w-full px-4 py-3 rounded-lg border outline-none transition-all duration-200;
