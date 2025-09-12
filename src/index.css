@@ -382,6 +382,11 @@ input[type="email"], input[type="password"] {
   display: none !important;
 }
 
+.print-only th,
+.print-only td {
+  display: none !important;
+}
+
 @media print {
   .no-print {
     display: none !important;
@@ -389,6 +394,11 @@ input[type="email"], input[type="password"] {
   
   .print-only {
     display: block !important;
+  }
+  
+  .print-only th,
+  .print-only td {
+    display: table-cell !important;
   }
   
   /* Hide sidebar and admin layout elements */

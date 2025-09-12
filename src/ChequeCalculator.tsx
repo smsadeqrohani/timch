@@ -387,7 +387,16 @@ export const ChequeCalculator: React.FC = () => {
                   <img src={logoImage} alt="تیمچه فرش" className="h-20 w-auto" />
                 </div>
                 <div className="text-right">
-                  <p className="text-gray-600 text-sm">تاریخ چاپ: {formatJalaliDateWithPersianNumbers(formatJalaliDate(getCurrentJalaliDate()))}</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">تاریخ فاکتور:</span>
+                      <span className="font-medium text-gray-200">{formatJalaliDateWithPersianNumbers(calculationResult.summary.invoiceDate)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">نوع ضمانت:</span>
+                      <span className="font-medium text-gray-200">{formData.guaranteeType === 'cheque' ? 'چک' : formData.guaranteeType === 'gold' ? 'طلا' : '-'}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="border-t border-gray-300 mt-4 pt-2"></div>
@@ -406,10 +415,6 @@ export const ChequeCalculator: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-300">نام خریدار:</span>
                   <span className="font-medium text-gray-200">{calculationResult.summary.customerName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-300">تاریخ فاکتور:</span>
-                  <span className="font-medium text-gray-200">{formatJalaliDateWithPersianNumbers(calculationResult.summary.invoiceDate)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-300">مبلغ کل:</span>
@@ -438,10 +443,6 @@ export const ChequeCalculator: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-300">جمع کل پرداختی:</span>
                   <span className="font-medium text-gray-200">{formatCurrency(calculationResult.summary.totalPayment)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-300">نوع ضمانت:</span>
-                  <span className="font-medium text-gray-200">{formData.guaranteeType === 'cheque' ? 'چک' : formData.guaranteeType === 'gold' ? 'طلا' : '-'}</span>
                 </div>
 
               </div>
@@ -477,6 +478,7 @@ export const ChequeCalculator: React.FC = () => {
                     <th className="border px-4 py-2 text-right border-gray-600 text-gray-200">شماره قسط</th>
                     <th className="border px-4 py-2 text-right border-gray-600 text-gray-200">تاریخ سررسید</th>
                     <th className="border px-4 py-2 text-right border-gray-600 text-gray-200">مبلغ قسط</th>
+                    <th className="border px-4 py-2 text-right border-gray-600 text-gray-200">تاریخ پرداخت</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -484,30 +486,32 @@ export const ChequeCalculator: React.FC = () => {
                     <tr key={installment.installmentNumber} className={index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-700'}>
                       <td className="border px-4 py-2 text-center border-gray-600 text-gray-200">{toPersianNumbers(installment.installmentNumber.toString())}</td>
                       <td className="border px-4 py-2 text-center border-gray-600 text-gray-200">{formatJalaliDateWithPersianNumbers(installment.dueDate)}</td>
-                      <td className="border px-4 py-2 text-left border-gray-600 text-gray-200">{formatCurrency(installment.installmentAmount)}</td>
+                      <td className="border px-4 py-2 text-center border-gray-600 text-gray-200">{formatCurrency(installment.installmentAmount)}</td>
+                      <td className="border px-4 py-2 text-center border-gray-600 text-gray-200"></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             
-            {/* Payment Instructions */}
-            <div className="print-only mt-16 pt-8 border-t border-gray-300">
-              <ul className="space-y-3 text-sm text-gray-700" dir="rtl">
-                <li className="flex items-start">
-                  <span className="text-gray-500 mr-2 mt-1">•</span>
-                  <span>خواهشمند است مبلغ اقساط را به شماره‌کارت {toPersianNumbers('4620-0578-0610-5047')} به‌نام آقای سیدمحمود برقعی واریز نمایید.</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-gray-500 mr-2 mt-1">•</span>
-                  <span>بعد از واریز هر قسط، اطلاع واریزی را همراه با شماره صفحه اقساط به شماره {toPersianNumbers('09352334898')} به‌صورت پیامک یا واتساپ جهت ثبت در حساب ارسال کنید.</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-gray-500 mr-2 mt-1">•</span>
-                  <span>وجه الضمانه اقساط تا تسویه حساب کامل نزد فروشگاه باقی می‌ماند. از درخواست استرداد آن قبل از موعد خودداری فرمایید.</span>
-                </li>
-              </ul>
-            </div>
+          </div>
+
+          {/* Payment Instructions */}
+          <div className="glass-card p-8 rounded-2xl shadow-xl shadow-gray-900/50 print-only">
+            <ul className="space-y-3 text-sm text-gray-700" dir="rtl">
+              <li className="flex items-start">
+                <span className="text-gray-500 mr-2 mt-1">•</span>
+                <span>خواهشمند است مبلغ اقساط را به شماره‌کارت <span className="font-bold underline">{toPersianNumbers('4620-0578-0610-5047')}</span> به‌نام آقای سیدمحمود برقعی واریز نمایید.</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-gray-500 mr-2 mt-1">•</span>
+                <span>بعد از واریز هر قسط، اطلاع واریزی را همراه با شماره صفحه اقساط به شماره <span className="font-bold underline">{toPersianNumbers('09352334898')}</span> به‌صورت پیامک یا واتساپ جهت ثبت در حساب ارسال کنید.</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-gray-500 mr-2 mt-1">•</span>
+                <span>وجه الضمانه اقساط تا تسویه حساب کامل نزد فروشگاه باقی می‌ماند. از درخواست استرداد آن قبل از موعد خودداری فرمایید.</span>
+              </li>
+            </ul>
           </div>
         </>
       )}
