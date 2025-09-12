@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SignOutButton } from '../SignOutButton';
 import { ChequeCalculator } from '../ChequeCalculator';
 import { UsersPage } from './UsersPage';
+import { CustomersPage } from './CustomersPage';
 
 interface AdminLayoutProps {}
 
@@ -18,6 +19,11 @@ const menuItems: MenuItem[] = [
     title: 'محاسبه گر اقساط',
     icon: '🧮',
     isActive: true
+  },
+  {
+    id: 'customers',
+    title: 'مشتریان',
+    icon: '👤'
   },
   {
     id: 'users',
@@ -117,6 +123,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
         {/* Page Content */}
         <main className="flex-1 p-6 overflow-auto">
           {activePage === 'installment-calculator' && <ChequeCalculator />}
+          {activePage === 'customers' && <CustomersPage />}
           {activePage === 'users' && <UsersPage />}
         </main>
       </div>

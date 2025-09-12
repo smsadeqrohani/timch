@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PersianDatePicker } from './components/PersianDatePicker';
 import { calculateInstallments, formatCurrency, CalculationResult } from './utils/calculationUtils';
 import { getCurrentJalaliDate, formatJalaliDate, getInstallmentDate, parseJalaliDate, isValidJalaliDate, formatJalaliDateWithPersianNumbers } from './utils/dateUtils';
+import { toPersianNumbers } from './lib/utils';
 import logoImage from './LOGO.png';
 
 interface FormData {
@@ -15,11 +16,6 @@ interface FormData {
   annualRate: number;
 }
 
-// Helper function to convert English numbers to Persian
-const toPersianNumbers = (value: string): string => {
-  const persianNumbers = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-  return value.replace(/[0-9]/g, (match) => persianNumbers[parseInt(match)]);
-};
 
 // Helper function to format numbers with Persian numerals and commas
 const formatPersianNumber = (value: number): string => {

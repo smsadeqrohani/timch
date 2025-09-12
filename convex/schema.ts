@@ -2,7 +2,15 @@ import { defineSchema, defineTable } from "convex/server";
 import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
-const applicationTables = {};
+const applicationTables = {
+  customers: defineTable({
+    name: v.string(),
+    mobile: v.string(),
+    nationalCode: v.optional(v.string()),
+  })
+    .index("byMobile", ["mobile"])
+    .index("byNationalCode", ["nationalCode"]),
+};
 
 export default defineSchema({
   ...authTables,
