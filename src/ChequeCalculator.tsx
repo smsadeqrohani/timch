@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { PersianDatePicker } from './components/PersianDatePicker';
 import { calculateInstallments, formatCurrency, CalculationResult } from './utils/calculationUtils';
 import { getCurrentJalaliDate, formatJalaliDate, getInstallmentDate, parseJalaliDate, isValidJalaliDate, formatJalaliDateWithPersianNumbers } from './utils/dateUtils';
@@ -13,7 +15,6 @@ interface FormData {
   totalAmount: number;
   downPayment: number;
   numberOfInstallments: number;
-  annualRate: number;
 }
 
 
@@ -38,6 +39,9 @@ const cleanNumberInput = (value: string): string => {
 };
 
 export const ChequeCalculator: React.FC = () => {
+  // Get default annual rate from settings
+  const defaultAnnualRate = useQuery(api.settings.getDefaultAnnualRate);
+
   const [formData, setFormData] = useState<FormData>({
     invoiceNumber: '',
     invoiceDate: '',
@@ -45,8 +49,7 @@ export const ChequeCalculator: React.FC = () => {
     guaranteeType: '' as 'cheque' | 'gold',
     totalAmount: 0,
     downPayment: 0,
-    numberOfInstallments: 12,
-    annualRate: 36
+    numberOfInstallments: 12
   });
 
   const [calculationResult, setCalculationResult] = useState<CalculationResult | null>(null);
@@ -61,6 +64,7 @@ export const ChequeCalculator: React.FC = () => {
       }));
     }
   }, [formData.invoiceDate]);
+
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -99,9 +103,6 @@ export const ChequeCalculator: React.FC = () => {
       newErrors.numberOfInstallments = 'تعداد اقساط نمی‌تواند بیشتر از ۶۰ باشد';
     }
 
-    if (formData.annualRate < 0) {
-      newErrors.annualRate = 'نرخ سود نمی‌تواند منفی باشد';
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -118,6 +119,11 @@ export const ChequeCalculator: React.FC = () => {
       return;
     }
 
+    if (defaultAnnualRate === undefined) {
+      setErrors({ general: 'در حال بارگذاری تنظیمات...' });
+      return;
+    }
+
     const result = calculateInstallments(
       formData.invoiceNumber,
       formData.customerName,
@@ -125,7 +131,7 @@ export const ChequeCalculator: React.FC = () => {
       formData.totalAmount,
       formData.downPayment,
       formData.numberOfInstallments,
-      formData.annualRate
+      defaultAnnualRate
     );
 
     if (result) {
@@ -150,8 +156,7 @@ export const ChequeCalculator: React.FC = () => {
       guaranteeType: '' as 'cheque' | 'gold',
       totalAmount: 0,
       downPayment: 0,
-      numberOfInstallments: 12,
-      annualRate: 36
+      numberOfInstallments: 12
     });
     setCalculationResult(null);
     setErrors({});
@@ -269,8 +274,8 @@ export const ChequeCalculator: React.FC = () => {
             </div>
           </div>
 
-          {/* Second Row: Total Amount, Down Payment, Number of Installments, Annual Rate */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Second Row: Total Amount, Down Payment, Number of Installments */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-300">
                 مبلغ کل فاکتور (ریال)
@@ -332,34 +337,23 @@ export const ChequeCalculator: React.FC = () => {
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2 text-gray-300">
-                نرخ سود سالانه (%)
-              </label>
-              <input
-                type="text"
-                value={toPersianNumbers(formData.annualRate.toString())}
-                onChange={(e) => {
-                  const englishValue = toEnglishNumbers(e.target.value);
-                  const numValue = englishValue ? Number(englishValue) : 0;
-                  setFormData({ ...formData, annualRate: numValue });
-                }}
-                className="auth-input-field"
-                placeholder="۳۶"
-              />
-              {errors.annualRate && (
-                <p className="text-red-500 text-sm mt-1">{errors.annualRate}</p>
-              )}
-            </div>
           </div>
+
+          {/* General Error Display */}
+          {errors.general && (
+            <div className="mt-4 p-3 rounded-lg bg-red-900/30 border border-red-700/50 text-red-200">
+              {errors.general}
+            </div>
+          )}
 
           <div className="flex space-x-3 space-x-reverse pt-4">
             <button
               type="button"
               onClick={handleCalculate}
-              className="flex-1 auth-button"
+              disabled={defaultAnnualRate === undefined}
+              className="flex-1 auth-button disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              محاسبه
+              {defaultAnnualRate === undefined ? 'در حال بارگذاری...' : 'محاسبه'}
             </button>
             <button
               type="button"
@@ -431,6 +425,10 @@ export const ChequeCalculator: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-300">تعداد اقساط:</span>
                   <span className="font-medium text-gray-200">{toPersianNumbers(calculationResult.summary.numberOfInstallments.toString())}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">نرخ سود سالانه:</span>
+                  <span className="font-medium text-gray-200">{toPersianNumbers(calculationResult.summary.annualRate.toString())}%</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-300">جمع سود:</span>

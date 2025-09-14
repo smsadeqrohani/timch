@@ -3,6 +3,8 @@ import { SignOutButton } from '../SignOutButton';
 import { ChequeCalculator } from '../ChequeCalculator';
 import { UsersPage } from './UsersPage';
 import { CustomersPage } from './CustomersPage';
+import { SettingsPage } from './SettingsPage';
+import CatalogMain from './CatalogMain';
 
 interface AdminLayoutProps {}
 
@@ -21,6 +23,11 @@ const menuItems: MenuItem[] = [
     isActive: true
   },
   {
+    id: 'catalog',
+    title: 'کاتالوگ محصولات',
+    icon: '🏺'
+  },
+  {
     id: 'customers',
     title: 'مشتریان',
     icon: '👤'
@@ -29,6 +36,11 @@ const menuItems: MenuItem[] = [
     id: 'users',
     title: 'کاربران',
     icon: '👥'
+  },
+  {
+    id: 'settings',
+    title: 'تنظیمات',
+    icon: '⚙️'
   }
 ];
 
@@ -123,8 +135,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
         {/* Page Content */}
         <main className="flex-1 p-6 overflow-auto">
           {activePage === 'installment-calculator' && <ChequeCalculator />}
+          {activePage === 'catalog' && <CatalogMain />}
           {activePage === 'customers' && <CustomersPage />}
           {activePage === 'users' && <UsersPage />}
+          {activePage === 'settings' && <SettingsPage />}
         </main>
       </div>
     </div>
