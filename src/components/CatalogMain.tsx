@@ -72,21 +72,31 @@ export default function CatalogMain() {
             >
               شرکت‌ها
             </button>
-            {viewMode === 'collections' && selectedCompanyName && (
+            
+            {/* Show company name when viewing collections or collection detail */}
+            {(viewMode === 'collections' || viewMode === 'collection') && selectedCompanyName && (
               <>
-                <span className="text-gray-500">/</span>
+                <span className="text-gray-500">&gt;</span>
                 <button
                   onClick={handleBackToCollections}
-                  className="px-3 py-1 rounded-lg transition-colors text-blue-400 hover:text-blue-300 hover:bg-blue-600/20"
+                  className={`px-3 py-1 rounded-lg transition-colors ${
+                    viewMode === 'collections'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-blue-400 hover:text-blue-300 hover:bg-blue-600/20'
+                  }`}
                 >
                   {selectedCompanyName}
                 </button>
               </>
             )}
+            
+            {/* Show collection name when viewing collection detail */}
             {viewMode === 'collection' && selectedCollectionName && (
               <>
-                <span className="text-gray-500">/</span>
-                <span className="text-white">{selectedCollectionName}</span>
+                <span className="text-gray-500">&gt;</span>
+                <span className="px-3 py-1 rounded-lg bg-gray-600 text-white">
+                  {selectedCollectionName}
+                </span>
               </>
             )}
           </nav>
