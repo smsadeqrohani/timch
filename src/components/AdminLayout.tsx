@@ -8,6 +8,7 @@ import { CustomersPage } from './CustomersPage';
 import { SettingsPage } from './SettingsPage';
 import { RolesPage } from './RolesPage';
 import { usePermissions } from '../hooks/usePermissions';
+import { useUserRoles } from '../hooks/useUserRoles';
 import CatalogMain from './CatalogMain';
 
 interface AdminLayoutProps {}
@@ -65,6 +66,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
   const [activePage, setActivePage] = useState('installment-calculator');
   const loggedInUser = useQuery(api.auth.loggedInUser);
   const { hasPermission } = usePermissions();
+  const { displayRole, userRoles, isLoading: rolesLoading } = useUserRoles();
 
   const getRequiredPermission = (pageId: string): string => {
     const item = menuItems.find(item => item.id === pageId);
@@ -132,7 +134,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
             {isSidebarOpen && (
               <div className="mr-3 flex-1">
                 <p className="text-sm font-medium text-gray-200">{loggedInUser?.name || 'کاربر'}</p>
-                <p className="text-xs text-gray-400">مدیر سیستم</p>
+                <p 
+                  className="text-xs text-gray-400"
+                  title={userRoles.length > 1 ? `نقش‌ها: ${userRoles.map(r => r.name).join('، ')}` : undefined}
+                >
+                  {rolesLoading ? 'در حال بارگذاری...' : displayRole}
+                  {userRoles.length > 1 && ' +'}
+                </p>
               </div>
             )}
           </div>
