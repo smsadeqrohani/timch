@@ -308,7 +308,7 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                         <div className="font-bold text-lg text-gray-400">
                           {orderDetails.order.status === ORDER_STATUS.PENDING_CASHIER 
                             ? '---' 
-                            : `${orderDetails.order.totalAmount.toLocaleString()} تومان`}
+                            : `${orderDetails.order.totalAmount.toLocaleString()} ریال`}
                         </div>
                       </div>
                     </div>
