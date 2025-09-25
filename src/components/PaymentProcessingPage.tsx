@@ -216,70 +216,78 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
           <div className="space-y-4">
             <h4 className="text-lg font-semibold text-gray-200">تعیین قیمت آیتم‌ها</h4>
             <div className="space-y-4">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-600">
-                      <th className="text-right py-3 px-4 text-gray-300 font-medium">شرکت</th>
-                      <th className="text-right py-3 px-4 text-gray-300 font-medium">مجموعه</th>
-                      <th className="text-right py-3 px-4 text-gray-300 font-medium">محصول</th>
-                      <th className="text-right py-3 px-4 text-gray-300 font-medium">رنگ</th>
-                      <th className="text-right py-3 px-4 text-gray-300 font-medium">ابعاد</th>
-                      <th className="text-right py-3 px-4 text-gray-300 font-medium">تعداد</th>
-                      <th className="text-right py-3 px-4 text-gray-300 font-medium">قیمت واحد</th>
-                      <th className="text-right py-3 px-4 text-gray-300 font-medium">مجموع</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orderDetails.items.map((item, index) => {
-                      const productDetails = getProductDetails(item.productId);
-                      return (
-                        <tr key={item._id} className="border-b border-gray-700 hover:bg-gray-800/30">
-                          <td className="py-3 px-4 text-gray-200">
-                            {productDetails?.company.name || 'نامشخص'}
-                          </td>
-                          <td className="py-3 px-4 text-gray-200">
-                            {productDetails?.collection.name || 'نامشخص'}
-                          </td>
-                          <td className="py-3 px-4 text-gray-200">
-                            {productDetails?.product.code || 'نامشخص'}
-                          </td>
-                          <td className="py-3 px-4 text-gray-200">
-                            {item.color || 'نامشخص'}
-                          </td>
-                          <td className="py-3 px-4 text-gray-200">
-                            {formatPersianNumber(item.sizeX)}×{formatPersianNumber(item.sizeY)}
-                          </td>
-                          <td className="py-3 px-4 text-gray-200">
-                            {formatPersianNumber(item.quantity)}
-                          </td>
-                          <td className="py-3 px-4">
-                            <input
-                              type="number"
-                              min="0"
-                              step="1000"
-                              placeholder="قیمت واحد"
-                              value={itemPrices[item._id] || ''}
-                              onChange={(e) => {
-                                const price = parseFloat(e.target.value) || 0;
-                                setItemPrices(prev => ({
-                                  ...prev,
-                                  [item._id]: price
-                                }));
-                              }}
-                              className="w-24 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-200 text-sm"
-                              dir="ltr"
-                            />
-                          </td>
-                          <td className="py-3 px-4 text-green-400 font-medium">
-                            {formatPrice((itemPrices[item._id] || 0) * item.quantity)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              {orderDetails.items.map((item, index) => {
+                const productDetails = getProductDetails(item.productId);
+                return (
+                  <div key={item._id} className="p-4 border border-gray-600 rounded-lg bg-gray-800/30">
+                    <div className="flex justify-between items-center mb-3">
+                      <h5 className="font-medium text-gray-200">آیتم {formatPersianNumber(index + 1)}</h5>
+                    </div>
+                    
+                    {/* Product Info Display */}
+                    <div className="mb-3 p-3 bg-gray-700/50 rounded-lg">
+                      <div className="text-sm text-gray-400">
+                        شرکت: {productDetails?.company.name || 'نامشخص'} | 
+                        مجموعه: {productDetails?.collection.name || 'نامشخص'} | 
+                        محصول: {productDetails?.product.code || 'نامشخص'} | 
+                        رنگ: {item.color || 'نامشخص'}
+                      </div>
+                    </div>
+                    
+                    {/* Price Input and Item Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          ابعاد
+                        </label>
+                        <div className="auth-input-field bg-gray-700 text-gray-400 cursor-not-allowed">
+                          {formatPersianNumber(item.sizeX)} × {formatPersianNumber(item.sizeY)}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          تعداد
+                        </label>
+                        <div className="auth-input-field bg-gray-700 text-gray-400 cursor-not-allowed">
+                          {formatPersianNumber(item.quantity)}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          قیمت پایه (ریال)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1000"
+                          placeholder="قیمت پایه"
+                          value={itemPrices[item._id] || ''}
+                          onChange={(e) => {
+                            const price = parseFloat(e.target.value) || 0;
+                            setItemPrices(prev => ({
+                              ...prev,
+                              [item._id]: price
+                            }));
+                          }}
+                          className="auth-input-field"
+                          dir="ltr"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          مجموع
+                        </label>
+                        <div className="auth-input-field bg-green-900/30 text-green-400 font-bold">
+                          {formatPrice((itemPrices[item._id] || 0) * item.quantity)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             
             {/* Total Amount Display */}
