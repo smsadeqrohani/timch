@@ -32,7 +32,7 @@ export default function CompaniesList({ onSelectCompany, selectedCompany }: Comp
 
   const hasCollections = useQuery(
     api.companies.hasCollections, 
-    editingCompany ? { id: editingCompany.id } : "skip"
+    editingCompany?.id ? { id: editingCompany.id } : "skip"
   );
 
   const handleSubmit = async (e: React.FormEvent) => {

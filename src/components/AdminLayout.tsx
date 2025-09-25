@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import { SignOutButton } from '../SignOutButton';
 import { ChequeCalculator } from '../ChequeCalculator';
 import { UsersPage } from './UsersPage';
@@ -47,6 +49,7 @@ const menuItems: MenuItem[] = [
 export const AdminLayout: React.FC<AdminLayoutProps> = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activePage, setActivePage] = useState('installment-calculator');
+  const loggedInUser = useQuery(api.auth.loggedInUser);
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white admin-layout" dir="rtl">
@@ -96,11 +99,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
         <div className="p-4 border-t border-gray-700/50">
           <div className="flex items-center">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full flex items-center justify-center text-white font-bold text-sm">
-              ا
+              {loggedInUser?.name ? loggedInUser.name.charAt(0).toUpperCase() : 'ا'}
             </div>
             {isSidebarOpen && (
               <div className="mr-3 flex-1">
-                <p className="text-sm font-medium text-gray-200">ادمین</p>
+                <p className="text-sm font-medium text-gray-200">{loggedInUser?.name || 'کاربر'}</p>
                 <p className="text-xs text-gray-400">مدیر سیستم</p>
               </div>
             )}

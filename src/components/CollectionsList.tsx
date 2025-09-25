@@ -33,7 +33,7 @@ export default function CollectionsList({ onSelectCollection, selectedCollection
 
   const hasProducts = useQuery(
     api.collections.hasProducts, 
-    editingCollection ? { id: editingCollection.id } : "skip"
+    editingCollection?.id ? { id: editingCollection.id } : "skip"
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
