@@ -297,11 +297,13 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                   <div key={item._id} className="flex items-center justify-between p-3 border border-gray-600 rounded-lg bg-gray-800/30">
                     <div className="flex-1">
                       <div className="font-medium text-gray-200">آیتم {toPersianNumbers(index + 1)}</div>
-                      <div className="text-sm text-gray-400 space-y-1">
-                        <div>شرکت: {productDetails?.company.name || 'نامشخص'}</div>
-                        <div>مجموعه: {productDetails?.collection.name || 'نامشخص'}</div>
-                        <div>محصول: {productDetails?.product.code || 'نامشخص'}</div>
-                        <div>رنگ: {item.color || 'نامشخص'}</div>
+                      <div className="text-sm text-gray-400">
+                        <div>
+                          شرکت: {productDetails?.company.name || 'نامشخص'} | 
+                          مجموعه: {productDetails?.collection.name || 'نامشخص'} | 
+                          محصول: {productDetails?.product.code || 'نامشخص'} | 
+                          رنگ: {item.color || 'نامشخص'}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-6 text-sm">
