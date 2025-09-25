@@ -46,6 +46,35 @@ input[type="email"], input[type="password"] {
   color: rgb(107 114 128) !important;
 }
 
+/* Modal styles */
+.modal-backdrop {
+  @apply fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50;
+}
+
+.modal-container {
+  @apply glass-card p-6 rounded-2xl shadow-xl mx-4;
+}
+
+.modal-container-sm {
+  @apply max-w-md w-full;
+}
+
+.modal-container-md {
+  @apply max-w-2xl w-full;
+}
+
+.modal-container-lg {
+  @apply max-w-4xl w-full;
+}
+
+.modal-container-xl {
+  @apply max-w-6xl w-full;
+}
+
+.modal-scrollable {
+  @apply max-h-[90vh] overflow-y-auto;
+}
+
 /* Dark mode styles for auth inputs */
 .dark .auth-input-field {
   background-color: rgb(31 41 55) !important;

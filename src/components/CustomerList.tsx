@@ -78,8 +78,8 @@ export const CustomerList: React.FC = () => {
 
       {/* Add/Edit Customer Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="glass-card p-8 rounded-2xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="modal-backdrop">
+          <div className="modal-container modal-container-md modal-scrollable p-8">
             <CustomerForm
               initialData={editingCustomer}
               isEdit={!!editingCustomer}

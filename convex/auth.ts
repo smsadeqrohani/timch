@@ -93,3 +93,66 @@ export const updateUserName = mutation({
     return null;
   },
 });
+
+export const updateUser = mutation({
+  args: {
+    userId: v.id("users"),
+    name: v.string(),
+    email: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    // Check if email is already used by another user
+    const existingUser = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("email"), args.email))
+      .first();
+
+    if (existingUser && existingUser._id !== args.userId) {
+      throw new Error("Email already exists");
+    }
+
+    await ctx.db.patch(args.userId, { 
+      name: args.name,
+      email: args.email 
+    });
+    return null;
+  },
+});
+
+export const deleteUser = mutation({
+  args: {
+    userId: v.id("users"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const currentUserId = await getAuthUserId(ctx);
+    if (!currentUserId) {
+      throw new Error("Not authenticated");
+    }
+
+    // Prevent user from deleting themselves
+    if (args.userId === currentUserId) {
+      throw new Error("Cannot delete your own account");
+    }
+
+    // Delete user roles first
+    const userRoles = await ctx.db
+      .query("userRoles")
+      .withIndex("byUserId", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    for (const userRole of userRoles) {
+      await ctx.db.delete(userRole._id);
+    }
+
+    // Delete the user
+    await ctx.db.delete(args.userId);
+    return null;
+  },
+});
