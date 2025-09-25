@@ -31,6 +31,12 @@ interface OrderWithDetails {
     email: string;
     createdAt: string;
   };
+  processedByUser?: {
+    id: Id<"users">;
+    name: string;
+    email: string;
+    createdAt: string;
+  };
 }
 
 export default function OrderList() {
@@ -47,11 +53,13 @@ export default function OrderList() {
   const ordersWithDetails: OrderWithDetails[] = (orders || []).map(order => {
     const customer = customers?.find(c => c._id === order.customerId);
     const createdByUser = users?.find((u: any) => u.id === order.createdBy);
+    const processedByUser = order.cashierId ? users?.find((u: any) => u.id === order.cashierId) : null;
     
     return {
       ...order,
       customer,
       createdByUser,
+      processedByUser,
     };
   });
 
@@ -159,7 +167,8 @@ export default function OrderList() {
                           {order.paymentType}
                         </span>
                       )}
-                      {!(order.status === ORDER_STATUS.PENDING_CASHIER && !order.cashierId) && (
+                      {!(order.status === ORDER_STATUS.PENDING_CASHIER && !order.cashierId) && 
+                       order.status !== ORDER_STATUS.CANCELLED && (
                         <span className="px-2 py-1 rounded text-xs font-medium bg-blue-600 text-white">
                           {formatPrice(order.totalAmount)}
                         </span>
@@ -180,6 +189,12 @@ export default function OrderList() {
 
                     <div className="text-xs text-gray-500">
                       ثبت شده توسط: {order.createdByUser?.name || 'نامشخص'}
+                      {order.processedByUser && (
+                        <>
+                          {' | '}
+                          {order.status === ORDER_STATUS.APPROVED ? 'تایید شده توسط' : 'لغو شده توسط'}: {order.processedByUser.name}
+                        </>
+                      )}
                     </div>
                   </div>
 

@@ -42,7 +42,7 @@ export default function OrdersPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-400">کل سفارشات</p>
-                <p className="text-2xl font-bold text-gray-200">{orderStats.total}</p>
+                <p className="text-2xl font-bold text-gray-200">{orderStats.total.toLocaleString('fa-IR')}</p>
               </div>
               <div className="text-3xl">📊</div>
             </div>
@@ -52,7 +52,7 @@ export default function OrdersPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-400">در انتظار صندوق</p>
-                <p className="text-2xl font-bold text-orange-400">{orderStats.pending}</p>
+                <p className="text-2xl font-bold text-orange-400">{orderStats.pending.toLocaleString('fa-IR')}</p>
               </div>
               <div className="text-3xl">💳</div>
             </div>
@@ -62,7 +62,7 @@ export default function OrdersPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-400">تایید شده</p>
-                <p className="text-2xl font-bold text-green-400">{orderStats.approved}</p>
+                <p className="text-2xl font-bold text-green-400">{orderStats.approved.toLocaleString('fa-IR')}</p>
               </div>
               <div className="text-3xl">✅</div>
             </div>
@@ -71,10 +71,10 @@ export default function OrdersPage() {
           <div className="glass-card p-6 rounded-2xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-400">مبلغ کل</p>
-                <p className="text-2xl font-bold text-blue-400">{orderStats.totalAmount}</p>
+                <p className="text-sm font-medium text-gray-400">لغو شده</p>
+                <p className="text-2xl font-bold text-red-400">{(orderStats.total - orderStats.pending - orderStats.approved).toLocaleString('fa-IR')}</p>
               </div>
-              <div className="text-3xl">💰</div>
+              <div className="text-3xl">❌</div>
             </div>
           </div>
         </div>
