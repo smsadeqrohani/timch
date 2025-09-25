@@ -18,6 +18,7 @@ import OrderDetailsPage from './OrderDetailsPage';
 import PaymentProcessingPage from './PaymentProcessingPage';
 import PermissionSetup from './PermissionSetup';
 import AutoPermissionSetup from './AutoPermissionSetup';
+import InstallmentsPage from './InstallmentsPage';
 import { Id } from '../../convex/_generated/dataModel';
 
 interface AdminLayoutProps {}
@@ -43,6 +44,12 @@ const menuItems: MenuItem[] = [
     title: 'سفارشات',
     icon: '📦',
     permission: 'orders:view'
+  },
+  {
+    id: 'installments',
+    title: 'مدیریت اقساط',
+    icon: '💳',
+    permission: 'installments:view'
   },
   {
     id: 'catalog',
@@ -247,6 +254,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
             } />
             <Route path="/orders" element={
               hasPermission('orders:view') ? <OrdersPage /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای مشاهده این بخش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/installments" element={
+              hasPermission('installments:view') ? <InstallmentsPage /> : (
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center">
                     <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>

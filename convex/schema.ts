@@ -93,6 +93,49 @@ const applicationTables = {
   })
     .index("byOrderId", ["orderId"])
     .index("byProductId", ["productId"]),
+
+  installmentAgreements: defineTable({
+    orderId: v.id("orders"),
+    customerId: v.id("customers"),
+    totalAmount: v.number(),
+    downPayment: v.number(),
+    principalAmount: v.number(),
+    numberOfInstallments: v.number(),
+    annualRate: v.number(),
+    monthlyRate: v.number(),
+    installmentAmount: v.number(),
+    totalInterest: v.number(),
+    totalPayment: v.number(),
+    guaranteeType: v.string(), // "cheque" | "gold"
+    agreementDate: v.string(), // Jalali date
+    status: v.string(), // "pending" | "approved" | "cancelled"
+    createdBy: v.id("users"),
+    approvedBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    approvedAt: v.optional(v.number()),
+  })
+    .index("byOrderId", ["orderId"])
+    .index("byCustomerId", ["customerId"])
+    .index("byStatus", ["status"])
+    .index("byCreatedBy", ["createdBy"]),
+
+  installments: defineTable({
+    agreementId: v.id("installmentAgreements"),
+    installmentNumber: v.number(),
+    dueDate: v.string(), // Jalali date
+    installmentAmount: v.number(),
+    interestAmount: v.number(),
+    principalAmount: v.number(),
+    remainingBalance: v.number(),
+    status: v.string(), // "pending" | "paid" | "overdue"
+    paidAt: v.optional(v.number()),
+    paidBy: v.optional(v.id("users")),
+    notes: v.optional(v.string()),
+  })
+    .index("byAgreementId", ["agreementId"])
+    .index("byStatus", ["status"])
+    .index("byDueDate", ["dueDate"]),
 };
 
 export default defineSchema({

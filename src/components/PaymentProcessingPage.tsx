@@ -5,6 +5,7 @@ import { Id } from '../../convex/_generated/dataModel';
 import { ORDER_STATUS, PAYMENT_TYPE } from '../../convex/orders';
 import { useNavigate } from 'react-router-dom';
 import { formatPrice, formatPersianNumber } from '../lib/utils';
+import InstallmentAgreementForm from './InstallmentAgreementForm';
 
 interface PaymentProcessingPageProps {
   orderId: Id<"orders">;
@@ -19,6 +20,7 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
   const [pendingPaymentType, setPendingPaymentType] = useState<string>('');
   const [showPaymentConfirmation, setShowPaymentConfirmation] = useState(false);
   const [selectedPaymentType, setSelectedPaymentType] = useState<string>('');
+  const [showInstallmentForm, setShowInstallmentForm] = useState(false);
 
   // Queries
   const currentUser = useQuery(api.auth.loggedInUser);
@@ -51,21 +53,21 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
   };
 
   // Calculate total amount from item prices
-  const calculateTotalAmount = () => {
+  const calculateTotalAmount = React.useMemo(() => {
     if (!orderDetails) return 0;
     
     return orderDetails.items.reduce((total, item) => {
       const price = itemPrices[item._id] || 0;
       return total + (price * item.quantity);
     }, 0);
-  };
+  }, [orderDetails, itemPrices]);
 
   // Check if customer needs national code
-  const needsNationalCode = () => {
+  const needsNationalCode = React.useMemo(() => {
     if (!orderDetails) return false;
     const customer = customers?.find(c => c._id === orderDetails.order.customerId);
     return !customer?.nationalCode;
-  };
+  }, [orderDetails, customers]);
 
   // Handle national code update
   const handleUpdateNationalCode = async () => {
@@ -108,12 +110,18 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
       return;
     }
 
-    if (calculateTotalAmount() === 0) {
+    if (calculateTotalAmount === 0) {
       setErrors({ general: 'لطفاً قیمت آیتم‌ها را تعیین کنید' });
       return;
     }
 
-    // Show confirmation dialog first
+    // If installment payment, show installment form
+    if (paymentType === PAYMENT_TYPE.INSTALLMENT) {
+      setShowInstallmentForm(true);
+      return;
+    }
+
+    // For cash payment, show confirmation dialog
     setSelectedPaymentType(paymentType);
     setShowPaymentConfirmation(true);
   };
@@ -123,7 +131,7 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
     if (!selectedPaymentType) return;
 
     // Check if customer needs national code
-    if (needsNationalCode()) {
+    if (needsNationalCode) {
       setPendingPaymentType(selectedPaymentType);
       setShowPaymentConfirmation(false);
       setShowNationalCodeDialog(true);
@@ -143,7 +151,7 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
         status: ORDER_STATUS.APPROVED,
         paymentType,
         cashierId: currentUser._id,
-        totalAmount: calculateTotalAmount(),
+        totalAmount: calculateTotalAmount,
       });
 
       // Navigate back to orders list
@@ -157,11 +165,34 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
     navigate(`/orders/${orderId}`);
   };
 
+  // Handle installment agreement success
+  const handleInstallmentSuccess = () => {
+    setShowInstallmentForm(false);
+    navigate('/orders');
+  };
+
+  // Handle installment agreement cancel
+  const handleInstallmentCancel = () => {
+    setShowInstallmentForm(false);
+  };
+
   if (!orderDetails) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-10 w-10 border-4 border-t-transparent border-blue-400"></div>
       </div>
+    );
+  }
+
+  // Show installment form if needed
+  if (showInstallmentForm) {
+    return (
+      <InstallmentAgreementForm
+        orderId={orderId}
+        totalAmount={calculateTotalAmount}
+        onSuccess={handleInstallmentSuccess}
+        onCancel={handleInstallmentCancel}
+      />
     );
   }
 
@@ -196,10 +227,10 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
                 <div className="text-sm text-blue-300">تعداد آیتم</div>
               </div>
               <div className="text-center p-3 bg-green-900/30 rounded-lg border border-green-500/30">
-                <div className={`text-xl font-bold ${calculateTotalAmount() === 0 ? 'text-gray-500 line-through' : 'text-green-400'}`}>
-                  {formatPrice(calculateTotalAmount())}
+                <div className={`text-xl font-bold ${calculateTotalAmount === 0 ? 'text-gray-500 line-through' : 'text-green-400'}`}>
+                  {formatPrice(calculateTotalAmount)}
                 </div>
-                <div className={`text-sm ${calculateTotalAmount() === 0 ? 'text-gray-400' : 'text-green-300'}`}>
+                <div className={`text-sm ${calculateTotalAmount === 0 ? 'text-gray-400' : 'text-green-300'}`}>
                   مجموع کل
                 </div>
               </div>
@@ -294,11 +325,11 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
             <div className="p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
               <div className="flex justify-between items-center">
                 <span className="text-blue-400 font-medium text-lg">مجموع کل:</span>
-                <span className={`font-bold text-2xl ${calculateTotalAmount() === 0 ? 'text-gray-500 line-through' : 'text-blue-400'}`}>
-                  {formatPrice(calculateTotalAmount())}
+                <span className={`font-bold text-2xl ${calculateTotalAmount === 0 ? 'text-gray-500 line-through' : 'text-blue-400'}`}>
+                  {formatPrice(calculateTotalAmount)}
                 </span>
               </div>
-              {calculateTotalAmount() === 0 && (
+              {calculateTotalAmount === 0 && (
                 <div className="text-center mt-2">
                   <span className="text-yellow-400 text-sm">⚠️ لطفاً قیمت آیتم‌ها را تعیین کنید</span>
                 </div>
@@ -312,9 +343,9 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
                 onClick={() => handleProcessPayment(PAYMENT_TYPE.CASH)}
-                disabled={calculateTotalAmount() === 0}
+                disabled={calculateTotalAmount === 0}
                 className={`p-6 rounded-lg font-medium text-lg transition-colors ${
-                  calculateTotalAmount() === 0 
+                  calculateTotalAmount === 0 
                     ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
                     : 'bg-green-600 hover:bg-green-700 text-white'
                 }`}
@@ -323,8 +354,8 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
                   <span className="text-2xl">💵</span>
                   <div className="text-center">
                     <div>پرداخت نقدی</div>
-                    <div className={`text-sm ${calculateTotalAmount() === 0 ? 'line-through opacity-60' : 'opacity-90'}`}>
-                      {formatPrice(calculateTotalAmount())}
+                    <div className={`text-sm ${calculateTotalAmount === 0 ? 'line-through opacity-60' : 'opacity-90'}`}>
+                      {formatPrice(calculateTotalAmount)}
                     </div>
                   </div>
                 </div>
@@ -332,9 +363,9 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
               
               <button
                 onClick={() => handleProcessPayment(PAYMENT_TYPE.INSTALLMENT)}
-                disabled={calculateTotalAmount() === 0}
+                disabled={calculateTotalAmount === 0}
                 className={`p-6 rounded-lg font-medium text-lg transition-colors ${
-                  calculateTotalAmount() === 0 
+                  calculateTotalAmount === 0 
                     ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
                     : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
@@ -343,8 +374,8 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
                   <span className="text-2xl">💳</span>
                   <div className="text-center">
                     <div>پرداخت اقساطی</div>
-                    <div className={`text-sm ${calculateTotalAmount() === 0 ? 'line-through opacity-60' : 'opacity-90'}`}>
-                      {formatPrice(calculateTotalAmount())}
+                    <div className={`text-sm ${calculateTotalAmount === 0 ? 'line-through opacity-60' : 'opacity-90'}`}>
+                      {formatPrice(calculateTotalAmount)}
                     </div>
                   </div>
                 </div>
@@ -436,7 +467,7 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
                     <div className="flex justify-between items-center">
                       <span className="text-gray-400">مبلغ کل:</span>
                       <span className="text-green-400 font-bold text-xl">
-                        {formatPrice(calculateTotalAmount())}
+                        {formatPrice(calculateTotalAmount)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">

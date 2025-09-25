@@ -23,6 +23,7 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
   const collections = useQuery(api.collections.list);
   const companies = useQuery(api.companies.list);
   const orderDetails = useQuery(api.orders.getWithItems, { id: orderId });
+  const installmentAgreement = useQuery(api.installmentAgreements.getByOrderId, { orderId });
 
   // Mutations
   const updateOrderStatus = useMutation(api.orders.updateStatus);
@@ -288,6 +289,94 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
               </div>
             )}
           </div>
+
+          {/* Installment Agreement Info */}
+          {installmentAgreement && orderDetails.order.paymentType === PAYMENT_TYPE.INSTALLMENT && (
+            <div className="border border-gray-600 rounded-lg p-4">
+              <h4 className="text-lg font-semibold mb-3 text-gray-200">اطلاعات قرارداد اقساط</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">مبلغ کل:</span>
+                    <span className="text-gray-200 font-medium">{toPersianNumbers(installmentAgreement.agreement.totalAmount.toLocaleString())} ریال</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">پیش‌پرداخت:</span>
+                    <span className="text-gray-200 font-medium">{toPersianNumbers(installmentAgreement.agreement.downPayment.toLocaleString())} ریال</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">مبلغ اقساطی:</span>
+                    <span className="text-gray-200 font-medium">{toPersianNumbers(installmentAgreement.agreement.principalAmount.toLocaleString())} ریال</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">تعداد اقساط:</span>
+                    <span className="text-gray-200 font-medium">{toPersianNumbers(installmentAgreement.agreement.numberOfInstallments)} قسط</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">مبلغ هر قسط:</span>
+                    <span className="text-green-400 font-bold">{toPersianNumbers(installmentAgreement.agreement.installmentAmount.toLocaleString())} ریال</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">کل سود:</span>
+                    <span className="text-gray-200 font-medium">{toPersianNumbers(installmentAgreement.agreement.totalInterest.toLocaleString())} ریال</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">کل پرداختی:</span>
+                    <span className="text-gray-200 font-medium">{toPersianNumbers(installmentAgreement.agreement.totalPayment.toLocaleString())} ریال</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">نوع ضمانت:</span>
+                    <span className="text-gray-200 font-medium">{installmentAgreement.agreement.guaranteeType === 'cheque' ? 'چک' : 'طلا'}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Installment Schedule */}
+              <div className="mt-4">
+                <h5 className="text-md font-semibold mb-3 text-gray-200">جدول اقساط</h5>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-600">
+                        <th className="text-right py-2 text-gray-300">شماره قسط</th>
+                        <th className="text-right py-2 text-gray-300">تاریخ سررسید</th>
+                        <th className="text-right py-2 text-gray-300">مبلغ قسط</th>
+                        <th className="text-right py-2 text-gray-300">سود</th>
+                        <th className="text-right py-2 text-gray-300">اصل</th>
+                        <th className="text-right py-2 text-gray-300">باقی‌مانده</th>
+                        <th className="text-right py-2 text-gray-300">وضعیت</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {installmentAgreement.installments.map((installment) => (
+                        <tr key={installment._id} className="border-b border-gray-700">
+                          <td className="py-2 text-gray-200">{toPersianNumbers(installment.installmentNumber)}</td>
+                          <td className="py-2 text-gray-200">{installment.dueDate}</td>
+                          <td className="py-2 text-gray-200">{toPersianNumbers(installment.installmentAmount.toLocaleString())}</td>
+                          <td className="py-2 text-gray-200">{toPersianNumbers(installment.interestAmount.toLocaleString())}</td>
+                          <td className="py-2 text-gray-200">{toPersianNumbers(installment.principalAmount.toLocaleString())}</td>
+                          <td className="py-2 text-gray-200">{toPersianNumbers(installment.remainingBalance.toLocaleString())}</td>
+                          <td className="py-2">
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              installment.status === 'پرداخت شده' 
+                                ? 'bg-green-600 text-white' 
+                                : installment.status === 'سررسید گذشته'
+                                ? 'bg-red-600 text-white'
+                                : 'bg-orange-600 text-white'
+                            }`}>
+                              {installment.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Order Items */}
           <div className="border border-gray-600 rounded-lg p-4">

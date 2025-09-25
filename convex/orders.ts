@@ -224,6 +224,115 @@ export const updateStatus = mutation({
   },
 });
 
+// Create installment agreement for order
+export const createInstallmentAgreement = mutation({
+  args: {
+    orderId: v.id("orders"),
+    totalAmount: v.number(),
+    downPayment: v.number(),
+    numberOfInstallments: v.number(),
+    annualRate: v.number(),
+    guaranteeType: v.string(),
+    agreementDate: v.string(),
+    createdBy: v.id("users"),
+  },
+  returns: v.id("installmentAgreements"),
+  handler: async (ctx, args) => {
+    // Get the order
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("سفارش یافت نشد");
+    }
+
+    // Create the installment agreement directly
+    const now = Date.now();
+    
+    // Calculate installment details
+    const principalAmount = args.totalAmount - args.downPayment;
+    const monthlyRate = args.annualRate / 12 / 100;
+    
+    // Calculate fixed installment amount using annuity formula
+    let installmentAmount: number;
+    if (monthlyRate === 0) {
+      installmentAmount = principalAmount / args.numberOfInstallments;
+    } else {
+      const numerator = principalAmount * monthlyRate * Math.pow(1 + monthlyRate, args.numberOfInstallments);
+      const denominator = Math.pow(1 + monthlyRate, args.numberOfInstallments) - 1;
+      installmentAmount = numerator / denominator;
+    }
+    
+    // Round to nearest 100,000 Rials
+    installmentAmount = Math.round(installmentAmount / 100000) * 100000;
+    
+    const totalPayment = installmentAmount * args.numberOfInstallments;
+    const totalInterest = totalPayment - principalAmount;
+
+    // Create the agreement
+    const agreementId = await ctx.db.insert("installmentAgreements", {
+      orderId: args.orderId,
+      customerId: order.customerId,
+      totalAmount: args.totalAmount,
+      downPayment: args.downPayment,
+      principalAmount,
+      numberOfInstallments: args.numberOfInstallments,
+      annualRate: args.annualRate,
+      monthlyRate: monthlyRate * 100, // Convert back to percentage
+      installmentAmount,
+      totalInterest,
+      totalPayment,
+      guaranteeType: args.guaranteeType,
+      agreementDate: args.agreementDate,
+      status: "در انتظار پرداخت",
+      createdBy: args.createdBy,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Create individual installments
+    let remainingBalance = principalAmount;
+    for (let i = 1; i <= args.numberOfInstallments; i++) {
+      const interestAmount = Math.round(remainingBalance * monthlyRate);
+      let principalAmountForThisMonth = installmentAmount - interestAmount;
+      
+      // Adjust for rounding in last installment
+      if (i === args.numberOfInstallments) {
+        principalAmountForThisMonth = remainingBalance;
+      }
+      
+      remainingBalance = Math.max(0, remainingBalance - principalAmountForThisMonth);
+      
+      // Calculate due date (assuming monthly installments)
+      const dueDate = new Date();
+      dueDate.setMonth(dueDate.getMonth() + i);
+      const jalaliDueDate = formatJalaliDate(dueDate);
+      
+      await ctx.db.insert("installments", {
+        agreementId,
+        installmentNumber: i,
+        dueDate: jalaliDueDate,
+        installmentAmount,
+        interestAmount,
+        principalAmount: principalAmountForThisMonth,
+        remainingBalance,
+        status: "در انتظار پرداخت",
+      });
+    }
+
+    // Update order payment type to installment and status to approved
+    // Also update the total amount to match the installment agreement total
+    await ctx.db.patch(args.orderId, {
+      paymentType: PAYMENT_TYPE.INSTALLMENT,
+      status: ORDER_STATUS.APPROVED,
+      totalAmount: args.totalAmount, // Use the total amount from the installment agreement
+      cashierId: args.createdBy, // The person who created the installment agreement
+      processedAt: now,
+      updatedAt: now,
+    });
+
+    return agreementId;
+  },
+});
+
 // Update order (general update)
 export const update = mutation({
   args: {
@@ -376,3 +485,12 @@ export const getPendingForCashier = query({
     return orders.sort((a, b) => a.createdAt - b.createdAt); // Oldest first for cashier
   },
 });
+
+// Helper function to format Jalali date
+function formatJalaliDate(date: Date): string {
+  // This is a simplified version - you might want to use a proper Jalali date library
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}/${month}/${day}`;
+}

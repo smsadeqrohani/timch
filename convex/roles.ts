@@ -6,6 +6,13 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 export const AVAILABLE_PERMISSIONS = [
   "installment-calculator:view",
   "installment-calculator:edit",
+  "installments:view",
+  "installments:create",
+  "installments:edit",
+  "installments:delete",
+  "installments:approve",
+  "installments:payment",
+  "installments:manage",
   "orders:view",
   "orders:create",
   "orders:edit",
@@ -584,6 +591,129 @@ export const addNewPermissionsToSuperAdmin = mutation({
       currentPermissions: superAdminRole.permissions,
       newPermissions: newPermissions,
       totalPermissions: updatedPermissions.length,
+    };
+  },
+});
+
+// Create default roles for the system
+export const createDefaultRoles = mutation({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const now = Date.now();
+    const createdRoles = [];
+
+    // 1. Super Admin Role (already exists, but ensure it has all permissions)
+    const superAdminRole = await ctx.db
+      .query("roles")
+      .withIndex("byName", (q) => q.eq("name", "Super Admin"))
+      .first();
+
+    if (superAdminRole) {
+      await ctx.db.patch(superAdminRole._id, {
+        permissions: [...AVAILABLE_PERMISSIONS],
+      });
+      createdRoles.push("Super Admin (updated)");
+    } else {
+      await ctx.db.insert("roles", {
+        name: "Super Admin",
+        description: "دسترسی کامل به تمام بخش‌های سیستم",
+        permissions: [...AVAILABLE_PERMISSIONS],
+        isSystemRole: true,
+        createdAt: now,
+        createdBy: userId,
+      });
+      createdRoles.push("Super Admin (created)");
+    }
+
+    // 2. Cashier Role
+    const cashierRole = await ctx.db
+      .query("roles")
+      .withIndex("byName", (q) => q.eq("name", "صندوق‌دار"))
+      .first();
+
+    if (!cashierRole) {
+      await ctx.db.insert("roles", {
+        name: "صندوق‌دار",
+        description: "مدیریت سفارشات و پرداخت‌ها",
+        permissions: [
+          "orders:view",
+          "orders:process",
+          "installments:view",
+          "installments:create",
+          "installments:approve",
+          "installments:payment",
+          "customers:view",
+          "customers:edit",
+        ],
+        isSystemRole: true,
+        createdAt: now,
+        createdBy: userId,
+      });
+      createdRoles.push("صندوق‌دار (created)");
+    }
+
+    // 3. Installment Manager Role
+    const installmentManagerRole = await ctx.db
+      .query("roles")
+      .withIndex("byName", (q) => q.eq("name", "مدیر اقساط"))
+      .first();
+
+    if (!installmentManagerRole) {
+      await ctx.db.insert("roles", {
+        name: "مدیر اقساط",
+        description: "مدیریت کامل قراردادهای اقساط",
+        permissions: [
+          "installments:view",
+          "installments:create",
+          "installments:edit",
+          "installments:delete",
+          "installments:approve",
+          "installments:payment",
+          "installments:manage",
+          "orders:view",
+          "customers:view",
+        ],
+        isSystemRole: true,
+        createdAt: now,
+        createdBy: userId,
+      });
+      createdRoles.push("مدیر اقساط (created)");
+    }
+
+    // 4. Sales Role
+    const salesRole = await ctx.db
+      .query("roles")
+      .withIndex("byName", (q) => q.eq("name", "فروشنده"))
+      .first();
+
+    if (!salesRole) {
+      await ctx.db.insert("roles", {
+        name: "فروشنده",
+        description: "ایجاد سفارشات و مدیریت مشتریان",
+        permissions: [
+          "orders:view",
+          "orders:create",
+          "orders:edit",
+          "customers:view",
+          "customers:edit",
+          "catalog:view",
+          "products:view",
+        ],
+        isSystemRole: true,
+        createdAt: now,
+        createdBy: userId,
+      });
+      createdRoles.push("فروشنده (created)");
+    }
+
+    return {
+      message: "Default roles created/updated successfully",
+      createdRoles,
+      totalRoles: createdRoles.length,
     };
   },
 });

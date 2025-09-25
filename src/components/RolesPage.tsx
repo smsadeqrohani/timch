@@ -23,6 +23,13 @@ interface User {
 const AVAILABLE_PERMISSIONS = [
   "installment-calculator:view",
   "installment-calculator:edit",
+  "installments:view",
+  "installments:create",
+  "installments:edit",
+  "installments:delete",
+  "installments:approve",
+  "installments:payment",
+  "installments:manage",
   "orders:view",
   "orders:create",
   "orders:edit",
@@ -56,6 +63,13 @@ const AVAILABLE_PERMISSIONS = [
 const PERMISSION_LABELS: Record<string, string> = {
   "installment-calculator:view": "مشاهده محاسبه گر اقساط",
   "installment-calculator:edit": "ویرایش محاسبه گر اقساط",
+  "installments:view": "مشاهده قراردادهای اقساط",
+  "installments:create": "ایجاد قرارداد اقساط",
+  "installments:edit": "ویرایش قرارداد اقساط",
+  "installments:delete": "حذف قرارداد اقساط",
+  "installments:approve": "تایید قرارداد اقساط",
+  "installments:payment": "ثبت پرداخت اقساط",
+  "installments:manage": "مدیریت کامل اقساط",
   "orders:view": "مشاهده سفارشات",
   "orders:create": "ایجاد سفارش",
   "orders:edit": "ویرایش سفارش",
@@ -112,6 +126,7 @@ export const RolesPage: React.FC = () => {
   const assignRole = useMutation(api.roles.assignRoleToUser);
   const removeRole = useMutation(api.roles.removeRoleFromUser);
   const updateSuperAdminPermissions = useMutation(api.roles.updateSuperAdminPermissions);
+  const createDefaultRoles = useMutation(api.roles.createDefaultRoles);
 
   const handleCreateRole = async () => {
     try {
@@ -208,6 +223,16 @@ export const RolesPage: React.FC = () => {
     }
   };
 
+  const handleCreateDefaultRoles = async () => {
+    try {
+      const result = await createDefaultRoles();
+      alert(`نقش‌های پیش‌فرض با موفقیت ایجاد شدند! تعداد نقش‌ها: ${result.totalRoles}`);
+    } catch (error: any) {
+      console.error('Error creating default roles:', error);
+      alert(error.message || 'خطا در ایجاد نقش‌های پیش‌فرض');
+    }
+  };
+
 
   if (roles === undefined || users === undefined) {
     return (
@@ -225,6 +250,12 @@ export const RolesPage: React.FC = () => {
           مدیریت نقش‌ها
         </h1>
         <div className="flex gap-2">
+          <button
+            onClick={handleCreateDefaultRoles}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+          >
+            ایجاد نقش‌های پیش‌فرض
+          </button>
           <button
             onClick={handleUpdateSuperAdminPermissions}
             className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
@@ -393,7 +424,7 @@ export const RolesPage: React.FC = () => {
           <div className="bg-gray-800 rounded-lg p-6">
             <h3 className="text-lg font-semibold mb-4">انتخاب کاربر</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {users.map((user) => (
+              {users?.map((user) => (
                 <button
                   key={user.id}
                   onClick={() => setSelectedUser(user.id)}
@@ -416,12 +447,12 @@ export const RolesPage: React.FC = () => {
           {selectedUser && (
             <div className="bg-gray-800 rounded-lg p-6">
               <h3 className="text-lg font-semibold mb-4">
-                تخصیص نقش به {users.find(u => u.id === selectedUser)?.name}
+                تخصیص نقش به {users?.find(u => u.id === selectedUser)?.name}
               </h3>
               
               <div className="grid gap-4">
                 {roles.map((role) => {
-                  const isAssigned = userRoles?.some(ur => ur.id === role.id);
+                  const isAssigned = userRoles?.some(ur => ur?.id === role.id);
                   return (
                     <div key={role.id} className="flex items-center justify-between bg-gray-700 p-4 rounded-lg">
                       <div>
