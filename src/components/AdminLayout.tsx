@@ -11,6 +11,14 @@ import OrdersPage from './OrdersPage';
 import { usePermissions } from '../hooks/usePermissions';
 import { useUserRoles } from '../hooks/useUserRoles';
 import CatalogMain from './CatalogMain';
+import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
+import OrderFormPage from './OrderFormPage';
+import OrderEditPage from './OrderEditPage';
+import OrderDetailsPage from './OrderDetailsPage';
+import PaymentProcessingPage from './PaymentProcessingPage';
+import PermissionSetup from './PermissionSetup';
+import AutoPermissionSetup from './AutoPermissionSetup';
+import { Id } from '../../convex/_generated/dataModel';
 
 interface AdminLayoutProps {}
 
@@ -65,24 +73,64 @@ const menuItems: MenuItem[] = [
     title: 'تنظیمات',
     icon: '⚙️',
     permission: 'settings:view'
+  },
+  {
+    id: 'permission-setup',
+    title: 'راه‌اندازی مجوزها',
+    icon: '🔧',
+    permission: undefined // No permission check for setup
   }
 ];
 
 export const AdminLayout: React.FC<AdminLayoutProps> = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [activePage, setActivePage] = useState('installment-calculator');
+  const navigate = useNavigate();
+  const location = useLocation();
   const loggedInUser = useQuery(api.auth.loggedInUser);
   const { hasPermission } = usePermissions();
   const { displayRole, userRoles, isLoading: rolesLoading } = useUserRoles();
+
+  // Get current active page from location
+  const getActivePage = () => {
+    const path = location.pathname;
+    if (path.startsWith('/orders/')) return 'orders';
+    if (path === '/orders') return 'orders';
+    if (path === '/catalog') return 'catalog';
+    if (path === '/customers') return 'customers';
+    if (path === '/users') return 'users';
+    if (path === '/roles') return 'roles';
+    if (path === '/settings') return 'settings';
+    if (path === '/permission-setup') return 'permission-setup';
+    return 'installment-calculator';
+  };
+
+  const activePage = getActivePage();
 
   const getRequiredPermission = (pageId: string): string => {
     const item = menuItems.find(item => item.id === pageId);
     return item?.permission || '';
   };
 
+  // Wrapper components for order pages that need orderId from URL
+  const OrderDetailsPageWrapper = () => {
+    const { orderId } = useParams<{ orderId: string }>();
+    return <OrderDetailsPage orderId={orderId as Id<"orders">} />;
+  };
+
+  const OrderEditPageWrapper = () => {
+    const { orderId } = useParams<{ orderId: string }>();
+    return <OrderEditPage orderId={orderId as Id<"orders">} />;
+  };
+
+  const PaymentProcessingPageWrapper = () => {
+    const { orderId } = useParams<{ orderId: string }>();
+    return <PaymentProcessingPage orderId={orderId as Id<"orders">} />;
+  };
+
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white admin-layout" dir="rtl">
+      <AutoPermissionSetup />
       {/* Right Sidebar */}
       <div className={`${isSidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 admin-sidebar flex flex-col`}>
         {/* Sidebar Header */}
@@ -116,7 +164,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
               return (
                 <li key={item.id}>
                   <button
-                    onClick={() => setActivePage(item.id)}
+                    onClick={() => {
+                      if (item.id === 'installment-calculator') {
+                        navigate('/');
+                      } else {
+                        navigate(`/${item.id}`);
+                      }
+                    }}
                     className={`flex items-center p-3 rounded-lg admin-sidebar-item w-full text-right ${
                       activePage === item.id ? 'active' : 'text-gray-300'
                     }`}
@@ -180,23 +234,119 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
 
         {/* Page Content */}
         <main className="flex-1 p-6 overflow-auto">
-          {activePage === 'installment-calculator' && hasPermission('installment-calculator:view') && <ChequeCalculator />}
-          {activePage === 'orders' && hasPermission('orders:view') && <OrdersPage />}
-          {activePage === 'catalog' && hasPermission('catalog:view') && <CatalogMain />}
-          {activePage === 'customers' && hasPermission('customers:view') && <CustomersPage />}
-          {activePage === 'users' && hasPermission('users:view') && <UsersPage />}
-          {activePage === 'roles' && hasPermission('roles:view') && <RolesPage />}
-          {activePage === 'settings' && hasPermission('settings:view') && <SettingsPage />}
-          
-          {/* Access denied message */}
-          {!hasPermission(getRequiredPermission(activePage)) && (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
-                <p className="text-gray-400">شما دسترسی لازم برای مشاهده این بخش را ندارید</p>
-              </div>
-            </div>
-          )}
+          <Routes>
+            <Route path="/" element={
+              hasPermission('installment-calculator:view') ? <ChequeCalculator /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای مشاهده این بخش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/orders" element={
+              hasPermission('orders:view') ? <OrdersPage /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای مشاهده این بخش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/orders/new" element={
+              hasPermission('orders:create') ? <OrderFormPage /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای ایجاد سفارش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/orders/:orderId" element={
+              hasPermission('orders:view') ? <OrderDetailsPageWrapper /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای مشاهده این بخش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/orders/:orderId/edit" element={
+              hasPermission('orders:edit') ? <OrderEditPageWrapper /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای ویرایش سفارش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/orders/:orderId/payment" element={
+              hasPermission('orders:process') ? <PaymentProcessingPageWrapper /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای پردازش سفارش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/catalog" element={
+              hasPermission('catalog:view') ? <CatalogMain /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای مشاهده این بخش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/customers" element={
+              hasPermission('customers:view') ? <CustomersPage /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای مشاهده این بخش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/users" element={
+              hasPermission('users:view') ? <UsersPage /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای مشاهده این بخش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/roles" element={
+              hasPermission('roles:view') ? <RolesPage /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای مشاهده این بخش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/settings" element={
+              hasPermission('settings:view') ? <SettingsPage /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای مشاهده این بخش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/permission-setup" element={<PermissionSetup />} />
+          </Routes>
         </main>
       </div>
     </div>

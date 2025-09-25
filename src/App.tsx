@@ -5,13 +5,19 @@ import { SignOutButton } from "./SignOutButton";
 import { Toaster } from "sonner";
 import { ChequeCalculator } from "./ChequeCalculator";
 import { AdminLayout } from "./components/AdminLayout";
+import { BrowserRouter as Router, Routes, Route, useParams } from "react-router-dom";
+import OrderFormPage from "./components/OrderFormPage";
+import OrderEditPage from "./components/OrderEditPage";
+import OrderDetailsPage from "./components/OrderDetailsPage";
 
 export default function App() {
   return (
-    <div className="min-h-screen transition-all duration-300 dark bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-      <Content />
-      <Toaster />
-    </div>
+    <Router>
+      <div className="min-h-screen transition-all duration-300 dark bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+        <Content />
+        <Toaster />
+      </div>
+    </Router>
   );
 }
 

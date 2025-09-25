@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import OrderList from './OrderList';
-import OrderForm from './OrderForm';
 import { usePermissions } from '../hooks/usePermissions';
+import { useNavigate } from 'react-router-dom';
 
 export default function OrdersPage() {
   const { hasPermission } = usePermissions();
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const navigate = useNavigate();
 
   // Get order statistics
   const orderStats = useQuery(api.orders.getStats);
@@ -25,27 +25,18 @@ export default function OrdersPage() {
           <p className="text-gray-400 mt-2">مشاهده و مدیریت سفارشات</p>
         </div>
         
-        {canCreateOrders && !showCreateForm && (
+        {canCreateOrders && (
           <button
-            onClick={() => setShowCreateForm(true)}
+            onClick={() => navigate('/orders/new')}
             className="auth-button flex items-center gap-2"
           >
             + سفارش جدید
           </button>
         )}
-        
-        {showCreateForm && (
-          <button
-            onClick={() => setShowCreateForm(false)}
-            className="btn-secondary flex items-center gap-2"
-          >
-            ← بازگشت به لیست
-          </button>
-        )}
       </div>
 
       {/* Statistics Cards */}
-      {orderStats && !showCreateForm && (
+      {orderStats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="glass-card p-6 rounded-2xl">
             <div className="flex items-center justify-between">
@@ -90,11 +81,7 @@ export default function OrdersPage() {
       )}
 
       {/* Content */}
-      {showCreateForm && canCreateOrders ? (
-        <OrderForm onSuccess={() => setShowCreateForm(false)} />
-      ) : (
-        canViewOrders && <OrderList />
-      )}
+      {canViewOrders && <OrderList />}
 
       {/* Access denied message */}
       {!hasPermission('orders:view') && (

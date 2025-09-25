@@ -28,3 +28,14 @@ export function toEnglishNumbers(str: string): string {
   }
   return result;
 }
+
+// Format price with thousand separators and Rial unit
+export function formatPrice(amount: number): string {
+  const formatted = amount.toLocaleString('fa-IR');
+  return `${formatted} ریال`;
+}
+
+// Format number with thousand separators in Persian
+export function formatPersianNumber(num: number): string {
+  return num.toLocaleString('fa-IR');
+}
