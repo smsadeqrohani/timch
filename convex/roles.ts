@@ -6,6 +6,11 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 export const AVAILABLE_PERMISSIONS = [
   "installment-calculator:view",
   "installment-calculator:edit",
+  "orders:view",
+  "orders:create",
+  "orders:edit",
+  "orders:delete",
+  "orders:process",
   "catalog:view",
   "catalog:edit",
   "catalog:delete",
@@ -499,6 +504,86 @@ export const setupSuperAdminSystem = mutation({
       totalUsers: users.length,
       newlyAssigned: assignedCount,
       alreadyAssigned: users.length - assignedCount,
+    };
+  },
+});
+
+// Update Super Admin role with new permissions
+export const updateSuperAdminPermissions = mutation({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get super admin role
+    const superAdminRole = await ctx.db
+      .query("roles")
+      .withIndex("byName", (q) => q.eq("name", "Super Admin"))
+      .first();
+
+    if (!superAdminRole) {
+      throw new Error("Super Admin role not found");
+    }
+
+    // Update with all available permissions
+    await ctx.db.patch(superAdminRole._id, {
+      permissions: [...AVAILABLE_PERMISSIONS],
+    });
+
+    return {
+      roleId: superAdminRole._id,
+      updatedPermissions: AVAILABLE_PERMISSIONS,
+      totalPermissions: AVAILABLE_PERMISSIONS.length,
+    };
+  },
+});
+
+// Add new permissions to Super Admin role
+export const addNewPermissionsToSuperAdmin = mutation({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get super admin role
+    const superAdminRole = await ctx.db
+      .query("roles")
+      .withIndex("byName", (q) => q.eq("name", "Super Admin"))
+      .first();
+
+    if (!superAdminRole) {
+      throw new Error("Super Admin role not found");
+    }
+
+    // Get current permissions and add new ones
+    const currentPermissions = new Set(superAdminRole.permissions);
+    const allPermissions = new Set([...AVAILABLE_PERMISSIONS]);
+    
+    // Find new permissions that aren't already in the role
+    const newPermissions = [...allPermissions].filter(permission => !currentPermissions.has(permission));
+
+    if (newPermissions.length === 0) {
+      return {
+        roleId: superAdminRole._id,
+        message: "No new permissions to add",
+        currentPermissions: superAdminRole.permissions,
+        newPermissions: [],
+      };
+    }
+
+    // Update with all permissions
+    const updatedPermissions = [...AVAILABLE_PERMISSIONS];
+    await ctx.db.patch(superAdminRole._id, {
+      permissions: updatedPermissions,
+    });
+
+    return {
+      roleId: superAdminRole._id,
+      currentPermissions: superAdminRole.permissions,
+      newPermissions: newPermissions,
+      totalPermissions: updatedPermissions.length,
     };
   },
 });

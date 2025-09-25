@@ -23,6 +23,11 @@ interface User {
 const AVAILABLE_PERMISSIONS = [
   "installment-calculator:view",
   "installment-calculator:edit",
+  "orders:view",
+  "orders:create",
+  "orders:edit",
+  "orders:delete",
+  "orders:process",
   "catalog:view",
   "catalog:edit",
   "catalog:delete",
@@ -51,6 +56,11 @@ const AVAILABLE_PERMISSIONS = [
 const PERMISSION_LABELS: Record<string, string> = {
   "installment-calculator:view": "مشاهده محاسبه گر اقساط",
   "installment-calculator:edit": "ویرایش محاسبه گر اقساط",
+  "orders:view": "مشاهده سفارشات",
+  "orders:create": "ایجاد سفارش",
+  "orders:edit": "ویرایش سفارش",
+  "orders:delete": "حذف سفارش",
+  "orders:process": "پردازش سفارش",
   "catalog:view": "مشاهده کاتالوگ",
   "catalog:edit": "ویرایش کاتالوگ",
   "catalog:delete": "حذف کاتالوگ",
@@ -101,6 +111,7 @@ export const RolesPage: React.FC = () => {
   const deleteRole = useMutation(api.roles.deleteRole);
   const assignRole = useMutation(api.roles.assignRoleToUser);
   const removeRole = useMutation(api.roles.removeRoleFromUser);
+  const updateSuperAdminPermissions = useMutation(api.roles.updateSuperAdminPermissions);
 
   const handleCreateRole = async () => {
     try {
@@ -187,6 +198,16 @@ export const RolesPage: React.FC = () => {
     }
   };
 
+  const handleUpdateSuperAdminPermissions = async () => {
+    try {
+      const result = await updateSuperAdminPermissions();
+      alert(`دسترسی‌های Super Admin به‌روزرسانی شد. تعداد کل دسترسی‌ها: ${result.totalPermissions}`);
+    } catch (error: any) {
+      console.error('Error updating Super Admin permissions:', error);
+      alert(error.message || 'خطا در به‌روزرسانی دسترسی‌های Super Admin');
+    }
+  };
+
 
   if (roles === undefined || users === undefined) {
     return (
@@ -204,6 +225,12 @@ export const RolesPage: React.FC = () => {
           مدیریت نقش‌ها
         </h1>
         <div className="flex gap-2">
+          <button
+            onClick={handleUpdateSuperAdminPermissions}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+          >
+            به‌روزرسانی دسترسی‌های Super Admin
+          </button>
           <button
             onClick={() => {
               setShowCreateRole(true);

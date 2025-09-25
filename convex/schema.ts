@@ -64,6 +64,35 @@ const applicationTables = {
     .index("byUserId", ["userId"])
     .index("byRoleId", ["roleId"])
     .index("byUserIdAndRoleId", ["userId", "roleId"]),
+
+  orders: defineTable({
+    customerId: v.id("customers"),
+    createdBy: v.id("users"),
+    status: v.string(), // "در انتظار صندوق", "تایید شده", "لغو شده"
+    paymentType: v.optional(v.string()), // "نقدی", "اقساط"
+    totalAmount: v.number(),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    cashierId: v.optional(v.id("users")), // Who processed the payment
+    processedAt: v.optional(v.number()),
+  })
+    .index("byCustomerId", ["customerId"])
+    .index("byCreatedBy", ["createdBy"])
+    .index("byStatus", ["status"])
+    .index("byCashierId", ["cashierId"])
+    .index("byCreatedAt", ["createdAt"]),
+
+  orderItems: defineTable({
+    orderId: v.id("orders"),
+    productId: v.id("products"),
+    color: v.string(), // Selected color for this item
+    sizeX: v.number(), // X dimension
+    sizeY: v.number(), // Y dimension
+    quantity: v.number(),
+  })
+    .index("byOrderId", ["orderId"])
+    .index("byProductId", ["productId"]),
 };
 
 export default defineSchema({

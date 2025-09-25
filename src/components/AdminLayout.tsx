@@ -7,6 +7,7 @@ import { UsersPage } from './UsersPage';
 import { CustomersPage } from './CustomersPage';
 import { SettingsPage } from './SettingsPage';
 import { RolesPage } from './RolesPage';
+import OrdersPage from './OrdersPage';
 import { usePermissions } from '../hooks/usePermissions';
 import { useUserRoles } from '../hooks/useUserRoles';
 import CatalogMain from './CatalogMain';
@@ -28,6 +29,12 @@ const menuItems: MenuItem[] = [
     icon: '🧮',
     isActive: true,
     permission: 'installment-calculator:view'
+  },
+  {
+    id: 'orders',
+    title: 'سفارشات',
+    icon: '📦',
+    permission: 'orders:view'
   },
   {
     id: 'catalog',
@@ -174,6 +181,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
         {/* Page Content */}
         <main className="flex-1 p-6 overflow-auto">
           {activePage === 'installment-calculator' && hasPermission('installment-calculator:view') && <ChequeCalculator />}
+          {activePage === 'orders' && hasPermission('orders:view') && <OrdersPage />}
           {activePage === 'catalog' && hasPermission('catalog:view') && <CatalogMain />}
           {activePage === 'customers' && hasPermission('customers:view') && <CustomersPage />}
           {activePage === 'users' && hasPermission('users:view') && <UsersPage />}
