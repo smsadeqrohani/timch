@@ -65,6 +65,12 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
     });
   };
 
+  // Convert numbers to Persian digits
+  const toPersianNumbers = (num: number | string): string => {
+    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    return num.toString().replace(/\d/g, (digit) => persianDigits[parseInt(digit)]);
+  };
+
   // Handle national code update
   const handleUpdateNationalCode = async () => {
     if (!orderDetails || !newNationalCode.trim()) {
@@ -213,13 +219,13 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center p-3 bg-blue-900/30 rounded-lg border border-blue-500/30">
                 <div className="text-xl font-bold text-blue-400">
-                  {orderDetails.order.totalAmount}
+                  {toPersianNumbers(orderDetails.order.totalAmount.toLocaleString())}
                 </div>
                 <div className="text-sm text-blue-300">مبلغ کل</div>
               </div>
               <div className="text-center p-3 bg-green-900/30 rounded-lg border border-green-500/30">
                 <div className="text-xl font-bold text-green-400">
-                  {orderDetails.items.length}
+                  {toPersianNumbers(orderDetails.items.length)}
                 </div>
                 <div className="text-sm text-green-300">تعداد آیتم</div>
               </div>
@@ -264,13 +270,17 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                 <div>
                   <div className="text-sm text-gray-500">شماره موبایل</div>
                   <div className="font-medium text-gray-200">
-                    {customers.find(c => c._id === orderDetails.order.customerId)?.mobile}
+                    {customers.find(c => c._id === orderDetails.order.customerId)?.mobile ? 
+                      toPersianNumbers(customers.find(c => c._id === orderDetails.order.customerId)?.mobile || '') : 
+                      'نامشخص'}
                   </div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-500">کد ملی</div>
                   <div className="font-medium text-gray-200">
-                    {customers.find(c => c._id === orderDetails.order.customerId)?.nationalCode || 'ثبت نشده'}
+                    {customers.find(c => c._id === orderDetails.order.customerId)?.nationalCode ? 
+                      toPersianNumbers(customers.find(c => c._id === orderDetails.order.customerId)?.nationalCode || '') : 
+                      'ثبت نشده'}
                   </div>
                 </div>
               </div>
@@ -286,7 +296,7 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                 return (
                   <div key={item._id} className="flex items-center justify-between p-3 border border-gray-600 rounded-lg bg-gray-800/30">
                     <div className="flex-1">
-                      <div className="font-medium text-gray-200">آیتم {index + 1}</div>
+                      <div className="font-medium text-gray-200">آیتم {toPersianNumbers(index + 1)}</div>
                       <div className="text-sm text-gray-400 space-y-1">
                         <div>شرکت: {productDetails?.company.name || 'نامشخص'}</div>
                         <div>مجموعه: {productDetails?.collection.name || 'نامشخص'}</div>
@@ -297,18 +307,18 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                     <div className="flex items-center gap-6 text-sm">
                       <div className="text-center">
                         <div className="text-gray-500">ابعاد</div>
-                        <div className="font-medium text-gray-200">{item.sizeX} × {item.sizeY}</div>
+                        <div className="font-medium text-gray-200">{toPersianNumbers(item.sizeX)} × {toPersianNumbers(item.sizeY)}</div>
                       </div>
                       <div className="text-center">
                         <div className="text-gray-500">تعداد</div>
-                        <div className="font-medium text-gray-200">{item.quantity}</div>
+                        <div className="font-medium text-gray-200">{toPersianNumbers(item.quantity)}</div>
                       </div>
                       <div className="text-center">
                         <div className="text-gray-500">مبلغ</div>
                         <div className="font-bold text-lg text-gray-400">
                           {orderDetails.order.status === ORDER_STATUS.PENDING_CASHIER 
                             ? '---' 
-                            : `${orderDetails.order.totalAmount.toLocaleString()} ریال`}
+                            : `${toPersianNumbers(orderDetails.order.totalAmount.toLocaleString())} ریال`}
                         </div>
                       </div>
                     </div>
