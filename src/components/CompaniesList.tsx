@@ -210,7 +210,7 @@ export default function CompaniesList({ onSelectCompany, selectedCompany }: Comp
 
       {/* Edit Company Modal */}
       {showEditForm && editingCompany && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700/50 w-full max-w-md">
             <div className="px-6 py-4 border-b border-gray-700/50">
               <h3 className="text-xl font-semibold text-white">ویرایش شرکت</h3>
