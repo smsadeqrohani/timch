@@ -25,7 +25,6 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
   const [selectedCompany, setSelectedCompany] = useState<Id<"companies"> | null>(null);
   const [selectedCollection, setSelectedCollection] = useState<Id<"collections"> | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Id<"products"> | null>(null);
-  const [selectedColor, setSelectedColor] = useState<string>('');
   const [newItemSizeX, setNewItemSizeX] = useState(1);
   const [newItemSizeY, setNewItemSizeY] = useState(1);
   const [newItemQuantity, setNewItemQuantity] = useState(1);
@@ -35,6 +34,8 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
   
   // Queries for product selection
   const companies = useQuery(api.companies.list);
+  const allCollections = useQuery(api.collections.list);
+  const allProducts = useQuery(api.products.list);
   const collections = useQuery(api.collections.getByCompanyId, 
     selectedCompany ? { companyId: selectedCompany } : "skip"
   );
@@ -50,7 +51,7 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
     }
   }, [orderDetails]);
 
-  const handleUpdateItem = (index: number, field: 'sizeX' | 'sizeY' | 'quantity' | 'color', value: number | string) => {
+  const handleUpdateItem = (index: number, field: 'sizeX' | 'sizeY' | 'quantity', value: number) => {
     const newItems = [...editedItems];
     newItems[index] = { ...newItems[index], [field]: value };
     setEditedItems(newItems);
@@ -66,8 +67,8 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
   };
 
   const handleAddNewItem = () => {
-    if (!selectedProduct || !selectedColor) {
-      setErrors({ general: 'لطفاً محصول و رنگ را انتخاب کنید' });
+    if (!selectedProduct) {
+      setErrors({ general: 'لطفاً محصول را انتخاب کنید' });
       return;
     }
 
@@ -76,11 +77,18 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
       return;
     }
 
+    // Get the selected product to get its color
+    const selectedProductData = products?.find(p => p._id === selectedProduct);
+    if (!selectedProductData) {
+      setErrors({ general: 'محصول انتخاب شده یافت نشد' });
+      return;
+    }
+
     // Create a new item with a temporary ID
     const newItem = {
       _id: `temp_${Date.now()}` as Id<"orderItems">,
       productId: selectedProduct,
-      color: selectedColor,
+      color: selectedProductData.color, // Use product's color
       sizeX: newItemSizeX,
       sizeY: newItemSizeY,
       quantity: newItemQuantity,
@@ -92,7 +100,6 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
     setSelectedCompany(null);
     setSelectedCollection(null);
     setSelectedProduct(null);
-    setSelectedColor('');
     setNewItemSizeX(1);
     setNewItemSizeY(1);
     setNewItemQuantity(1);
@@ -133,6 +140,31 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
 
   const handleCancel = () => {
     navigate('/orders');
+  };
+
+  // Get product details with company and collection info
+  const getProductDetails = (productId: Id<"products">) => {
+    // First try to find in the filtered products (for new items)
+    let product = products?.find(p => p._id === productId);
+    
+    // If not found, get from all products (for existing items)
+    if (!product) {
+      product = allProducts?.find(p => p._id === productId);
+    }
+    
+    if (!product) return null;
+
+    const collection = allCollections?.find(c => c._id === product.collectionId);
+    if (!collection) return null;
+
+    const company = companies?.find(comp => comp._id === collection.companyId);
+    if (!company) return null;
+
+    return {
+      product,
+      collection,
+      company,
+    };
   };
 
   if (!orderDetails) {
@@ -190,7 +222,6 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
                       setSelectedCompany(e.target.value as Id<"companies">);
                       setSelectedCollection(null);
                       setSelectedProduct(null);
-                      setSelectedColor('');
                     }}
                     className="auth-input-field"
                   >
@@ -210,7 +241,6 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
                     onChange={(e) => {
                       setSelectedCollection(e.target.value as Id<"collections">);
                       setSelectedProduct(null);
-                      setSelectedColor('');
                     }}
                     disabled={!selectedCompany}
                     className="auth-input-field"
@@ -245,22 +275,12 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">رنگ</label>
-                  <select
-                    value={selectedColor}
-                    onChange={(e) => setSelectedColor(e.target.value)}
-                    disabled={!selectedProduct}
-                    className="auth-input-field"
-                  >
-                    <option value="">انتخاب رنگ</option>
-                    {selectedProduct && products?.filter(p => 
-                      p.collectionId === selectedCollection && 
-                      p.code === products.find(prod => prod._id === selectedProduct)?.code
-                    ).map((product) => (
-                      <option key={product._id} value={product.color}>
-                        {product.color}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="auth-input-field bg-gray-700 text-gray-400 cursor-not-allowed">
+                    {selectedProduct ? 
+                      products?.find(p => p._id === selectedProduct)?.color || 'نامشخص' : 
+                      'ابتدا محصول را انتخاب کنید'
+                    }
+                  </div>
                 </div>
               </div>
 
@@ -306,7 +326,7 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
 
               <button
                 onClick={handleAddNewItem}
-                disabled={!selectedProduct || !selectedColor}
+                disabled={!selectedProduct}
                 className="auth-button disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 + افزودن آیتم جدید
@@ -318,81 +338,80 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
           <div>
             <h4 className="text-lg font-semibold mb-3 text-gray-200">آیتم‌های سفارش</h4>
             <div className="space-y-4">
-              {editedItems.map((item, index) => (
-                <div key={item._id} className="p-4 border border-gray-600 rounded-lg bg-gray-800/30">
-                  <div className="flex justify-between items-center mb-3">
-                    <h5 className="font-medium text-gray-200">آیتم {index + 1}</h5>
-                    <button
-                      onClick={() => handleRemoveItem(index)}
-                      disabled={editedItems.length <= 1}
-                      className="px-3 py-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded text-sm flex items-center gap-1"
-                    >
-                      🗑️ حذف
-                    </button>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        رنگ
-                      </label>
-                      <input
-                        type="text"
-                        value={item.color}
-                        onChange={(e) => handleUpdateItem(index, 'color', e.target.value)}
-                        className="auth-input-field"
-                        dir="rtl"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        طول (X)
-                      </label>
-                      <input
-                        type="number"
-                        min="0.1"
-                        step="0.1"
-                        value={item.sizeX}
-                        onChange={(e) => handleUpdateItem(index, 'sizeX', parseFloat(e.target.value) || 0)}
-                        className="auth-input-field"
-                        dir="ltr"
-                      />
+              {editedItems.map((item, index) => {
+                const productDetails = getProductDetails(item.productId);
+                return (
+                  <div key={item._id} className="p-4 border border-gray-600 rounded-lg bg-gray-800/30">
+                    <div className="flex justify-between items-center mb-3">
+                      <h5 className="font-medium text-gray-200">آیتم {index + 1}</h5>
+                      <button
+                        onClick={() => handleRemoveItem(index)}
+                        disabled={editedItems.length <= 1}
+                        className="px-3 py-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded text-sm flex items-center gap-1"
+                      >
+                        🗑️ حذف
+                      </button>
                     </div>
                     
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        عرض (Y)
-                      </label>
-                      <input
-                        type="number"
-                        min="0.1"
-                        step="0.1"
-                        value={item.sizeY}
-                        onChange={(e) => handleUpdateItem(index, 'sizeY', parseFloat(e.target.value) || 0)}
-                        className="auth-input-field"
-                        dir="ltr"
-                      />
+                    {/* Product Info Display */}
+                    <div className="mb-3 p-3 bg-gray-700/50 rounded-lg">
+                      <div className="text-sm text-gray-400">
+                        شرکت: {productDetails?.company.name || 'نامشخص'} | 
+                        مجموعه: {productDetails?.collection.name || 'نامشخص'} | 
+                        محصول: {productDetails?.product.code || 'نامشخص'} | 
+                        رنگ: {item.color || 'نامشخص'}
+                      </div>
                     </div>
                     
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        تعداد
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e) => handleUpdateItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                        className="auth-input-field"
-                        dir="ltr"
-                      />
+                    {/* Editable Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          طول (X)
+                        </label>
+                        <input
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          value={item.sizeX}
+                          onChange={(e) => handleUpdateItem(index, 'sizeX', parseFloat(e.target.value) || 0)}
+                          className="auth-input-field"
+                          dir="ltr"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          عرض (Y)
+                        </label>
+                        <input
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          value={item.sizeY}
+                          onChange={(e) => handleUpdateItem(index, 'sizeY', parseFloat(e.target.value) || 0)}
+                          className="auth-input-field"
+                          dir="ltr"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          تعداد
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => handleUpdateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                          className="auth-input-field"
+                          dir="ltr"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             
             {/* Items Summary */}

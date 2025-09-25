@@ -219,7 +219,9 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center p-3 bg-blue-900/30 rounded-lg border border-blue-500/30">
                 <div className="text-xl font-bold text-blue-400">
-                  {toPersianNumbers(orderDetails.order.totalAmount.toLocaleString())}
+                  {orderDetails.order.status === ORDER_STATUS.PENDING_CASHIER 
+                    ? '---' 
+                    : toPersianNumbers(orderDetails.order.totalAmount.toLocaleString())}
                 </div>
                 <div className="text-sm text-blue-300">مبلغ کل</div>
               </div>
@@ -320,7 +322,9 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                         <div className="font-bold text-lg text-gray-400">
                           {orderDetails.order.status === ORDER_STATUS.PENDING_CASHIER 
                             ? '---' 
-                            : `${toPersianNumbers(orderDetails.order.totalAmount.toLocaleString())} ریال`}
+                            : item.price 
+                              ? `${toPersianNumbers((item.price * item.quantity).toLocaleString())} ریال`
+                              : '---'}
                         </div>
                       </div>
                     </div>
