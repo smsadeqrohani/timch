@@ -43,6 +43,27 @@ const applicationTables = {
     .index("byCollectionId", ["collectionId"])
     .index("byCode", ["code"])
     .index("byCollectionIdAndCode", ["collectionId", "code"]),
+
+  roles: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    permissions: v.array(v.string()), // Array of permission strings
+    isSystemRole: v.optional(v.boolean()), // For system roles like super admin
+    createdAt: v.number(),
+    createdBy: v.id("users"),
+  })
+    .index("byName", ["name"])
+    .index("byIsSystemRole", ["isSystemRole"]),
+
+  userRoles: defineTable({
+    userId: v.id("users"),
+    roleId: v.id("roles"),
+    assignedAt: v.number(),
+    assignedBy: v.id("users"),
+  })
+    .index("byUserId", ["userId"])
+    .index("byRoleId", ["roleId"])
+    .index("byUserIdAndRoleId", ["userId", "roleId"]),
 };
 
 export default defineSchema({

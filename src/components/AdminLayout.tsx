@@ -6,6 +6,8 @@ import { ChequeCalculator } from '../ChequeCalculator';
 import { UsersPage } from './UsersPage';
 import { CustomersPage } from './CustomersPage';
 import { SettingsPage } from './SettingsPage';
+import { RolesPage } from './RolesPage';
+import { usePermissions } from '../hooks/usePermissions';
 import CatalogMain from './CatalogMain';
 
 interface AdminLayoutProps {}
@@ -15,6 +17,7 @@ interface MenuItem {
   title: string;
   icon: string;
   isActive?: boolean;
+  permission?: string;
 }
 
 const menuItems: MenuItem[] = [
@@ -22,27 +25,38 @@ const menuItems: MenuItem[] = [
     id: 'installment-calculator',
     title: 'محاسبه گر اقساط',
     icon: '🧮',
-    isActive: true
+    isActive: true,
+    permission: 'installment-calculator:view'
   },
   {
     id: 'catalog',
     title: 'کاتالوگ محصولات',
-    icon: '🏺'
+    icon: '🏺',
+    permission: 'catalog:view'
   },
   {
     id: 'customers',
     title: 'مشتریان',
-    icon: '👤'
+    icon: '👤',
+    permission: 'customers:view'
   },
   {
     id: 'users',
     title: 'کاربران',
-    icon: '👥'
+    icon: '👥',
+    permission: 'users:view'
+  },
+  {
+    id: 'roles',
+    title: 'نقش‌ها',
+    icon: '🔐',
+    permission: 'roles:view'
   },
   {
     id: 'settings',
     title: 'تنظیمات',
-    icon: '⚙️'
+    icon: '⚙️',
+    permission: 'settings:view'
   }
 ];
 
@@ -50,6 +64,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activePage, setActivePage] = useState('installment-calculator');
   const loggedInUser = useQuery(api.auth.loggedInUser);
+  const { hasPermission } = usePermissions();
+
+  const getRequiredPermission = (pageId: string): string => {
+    const item = menuItems.find(item => item.id === pageId);
+    return item?.permission || '';
+  };
+
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white admin-layout" dir="rtl">
@@ -77,21 +98,28 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
         {/* Navigation Menu */}
         <nav className="flex-1 p-4">
           <ul className="space-y-2">
-            {menuItems.map((item) => (
-              <li key={item.id}>
-                <button
-                  onClick={() => setActivePage(item.id)}
-                  className={`flex items-center p-3 rounded-lg admin-sidebar-item w-full text-right ${
-                    activePage === item.id ? 'active' : 'text-gray-300'
-                  }`}
-                >
-                  <span className="text-xl ml-3">{item.icon}</span>
-                  {isSidebarOpen && (
-                    <span className="font-medium">{item.title}</span>
-                  )}
-                </button>
-              </li>
-            ))}
+            {menuItems.map((item) => {
+              // Check if user has permission to see this menu item
+              if (item.permission && !hasPermission(item.permission)) {
+                return null;
+              }
+              
+              return (
+                <li key={item.id}>
+                  <button
+                    onClick={() => setActivePage(item.id)}
+                    className={`flex items-center p-3 rounded-lg admin-sidebar-item w-full text-right ${
+                      activePage === item.id ? 'active' : 'text-gray-300'
+                    }`}
+                  >
+                    <span className="text-xl ml-3">{item.icon}</span>
+                    {isSidebarOpen && (
+                      <span className="font-medium">{item.title}</span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
@@ -137,11 +165,22 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
 
         {/* Page Content */}
         <main className="flex-1 p-6 overflow-auto">
-          {activePage === 'installment-calculator' && <ChequeCalculator />}
-          {activePage === 'catalog' && <CatalogMain />}
-          {activePage === 'customers' && <CustomersPage />}
-          {activePage === 'users' && <UsersPage />}
-          {activePage === 'settings' && <SettingsPage />}
+          {activePage === 'installment-calculator' && hasPermission('installment-calculator:view') && <ChequeCalculator />}
+          {activePage === 'catalog' && hasPermission('catalog:view') && <CatalogMain />}
+          {activePage === 'customers' && hasPermission('customers:view') && <CustomersPage />}
+          {activePage === 'users' && hasPermission('users:view') && <UsersPage />}
+          {activePage === 'roles' && hasPermission('roles:view') && <RolesPage />}
+          {activePage === 'settings' && hasPermission('settings:view') && <SettingsPage />}
+          
+          {/* Access denied message */}
+          {!hasPermission(getRequiredPermission(activePage)) && (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                <p className="text-gray-400">شما دسترسی لازم برای مشاهده این بخش را ندارید</p>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>
