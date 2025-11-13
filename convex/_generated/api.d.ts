@@ -25,6 +25,7 @@ import type * as products from "../products.js";
 import type * as roles from "../roles.js";
 import type * as router from "../router.js";
 import type * as settings from "../settings.js";
+import type * as sizes from "../sizes.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   roles: typeof roles;
   router: typeof router;
   settings: typeof settings;
+  sizes: typeof sizes;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

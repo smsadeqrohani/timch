@@ -46,6 +46,20 @@ const applicationTables = {
     .index("byCollectionIdAndCode", ["collectionId", "code"])
     .index("byCollectionIdCodeAndColor", ["collectionId", "code", "color"]),
 
+  sizes: defineTable({
+    x: v.number(),
+    y: v.number(),
+    type: v.union(
+      v.literal("mostatil"),
+      v.literal("morabba"),
+      v.literal("dayere"),
+      v.literal("gerd"),
+      v.literal("beyzi"),
+    ),
+  })
+    .index("byType", ["type"])
+    .index("byTypeAndDimensions", ["type", "x", "y"]),
+
   roles: defineTable({
     name: v.string(),
     description: v.optional(v.string()),

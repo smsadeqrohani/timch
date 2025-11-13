@@ -9,6 +9,53 @@ interface OrderEditPageProps {
   orderId: Id<"orders">;
 }
 
+type RawSizeType = 'mostatil' | 'morabba' | 'dayere' | 'gerd' | 'beyzi';
+type SizeType = 'mostatil' | 'morabba' | 'gerd' | 'beyzi';
+
+interface SizeDoc {
+  _id: Id<'sizes'>;
+  _creationTime: number;
+  x: number;
+  y: number;
+  type: RawSizeType;
+}
+
+const typeLabels: Record<SizeType, string> = {
+  mostatil: 'مستطیل',
+  morabba: 'مربع',
+  gerd: 'گرد',
+  beyzi: 'بیضی',
+};
+
+const toPersianDigits = (value: string): string =>
+  value.replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]).replace(/\./g, '٫');
+
+const formatDimension = (value: number) => {
+  const raw = value.toString().replace(/\.?0+$/, '');
+  return toPersianDigits(raw);
+};
+
+const normalizeSizeType = (type: RawSizeType): SizeType =>
+  type === 'dayere' ? 'gerd' : type;
+
+const getTypeLabel = (type: RawSizeType) => typeLabels[normalizeSizeType(type)];
+
+const formatSizeLabel = (size: SizeDoc) =>
+  `${getTypeLabel(size.type)} ${formatDimension(size.x)}*${formatDimension(size.y)}`;
+
+const findSizeByDimensions = (
+  sizes: SizeDoc[] | undefined,
+  x: number,
+  y: number,
+) =>
+  sizes?.find(
+    (size) => Math.abs(size.x - x) < 1e-6 && Math.abs(size.y - y) < 1e-6,
+  );
+
+const formatQuantity = (value: number) => toPersianDigits(value.toString());
+
+const formatColorLabel = (color: string) => toPersianDigits(color);
+
 export default function OrderEditPage({ orderId }: OrderEditPageProps) {
   const navigate = useNavigate();
   const [editedItems, setEditedItems] = useState<Array<{
@@ -26,8 +73,7 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
   const [selectedCompany, setSelectedCompany] = useState<Id<"companies"> | null>(null);
   const [selectedCollection, setSelectedCollection] = useState<Id<"collections"> | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Id<"products"> | null>(null);
-  const [newItemSizeX, setNewItemSizeX] = useState(1);
-  const [newItemSizeY, setNewItemSizeY] = useState(1);
+  const [newItemSizeId, setNewItemSizeId] = useState<Id<'sizes'> | null>(null);
   const [newItemQuantity, setNewItemQuantity] = useState(1);
 
   const updateOrder = useMutation(api.orders.update);
@@ -43,6 +89,7 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
   const products = useQuery(api.products.getByCollectionId, 
     selectedCollection ? { collectionId: selectedCollection } : "skip"
   );
+  const sizes = useQuery(api.sizes.list);
 
   useEffect(() => {
     if (orderDetails) {
@@ -52,9 +99,9 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
     }
   }, [orderDetails]);
 
-  const handleUpdateItem = (index: number, field: 'sizeX' | 'sizeY' | 'quantity', value: number) => {
+  const handleUpdateItemQuantity = (index: number, quantity: number) => {
     const newItems = [...editedItems];
-    newItems[index] = { ...newItems[index], [field]: value };
+    newItems[index] = { ...newItems[index], quantity };
     setEditedItems(newItems);
   };
 
@@ -67,14 +114,43 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
     setEditedItems(newItems);
   };
 
+  const handleUpdateItemSize = (index: number, sizeId: string) => {
+    if (!sizes) return;
+    const size = sizes.find((s) => s._id === (sizeId as Id<'sizes'>));
+    if (!size) return;
+    const newItems = [...editedItems];
+    newItems[index] = {
+      ...newItems[index],
+      sizeX: size.x,
+      sizeY: size.y,
+    };
+    setEditedItems(newItems);
+  };
+
   const handleAddNewItem = () => {
     if (!selectedProduct) {
       setErrors({ general: 'لطفاً محصول را انتخاب کنید' });
       return;
     }
 
-    if (newItemSizeX <= 0 || newItemSizeY <= 0 || newItemQuantity <= 0) {
-      setErrors({ general: 'ابعاد و تعداد باید بزرگتر از صفر باشد' });
+    if (!sizes || sizes.length === 0) {
+      setErrors({ general: 'لطفاً ابتدا سایز تعریف کنید' });
+      return;
+    }
+
+    if (!newItemSizeId) {
+      setErrors({ general: 'لطفاً سایز را انتخاب کنید' });
+      return;
+    }
+
+    if (newItemQuantity <= 0) {
+      setErrors({ general: 'تعداد باید بزرگتر از صفر باشد' });
+      return;
+    }
+
+    const selectedSize = sizes.find((size) => size._id === newItemSizeId);
+    if (!selectedSize) {
+      setErrors({ general: 'سایز انتخاب شده یافت نشد' });
       return;
     }
 
@@ -90,8 +166,8 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
       _id: `temp_${Date.now()}` as Id<"orderItems">,
       productId: selectedProduct,
       color: selectedProductData.color, // Use product's color
-      sizeX: newItemSizeX,
-      sizeY: newItemSizeY,
+      sizeX: selectedSize.x,
+      sizeY: selectedSize.y,
       quantity: newItemQuantity,
     };
 
@@ -101,8 +177,7 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
     setSelectedCompany(null);
     setSelectedCollection(null);
     setSelectedProduct(null);
-    setNewItemSizeX(1);
-    setNewItemSizeY(1);
+    setNewItemSizeId(null);
     setNewItemQuantity(1);
     setErrors({});
   };
@@ -268,7 +343,7 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
                     <option value="">انتخاب محصول</option>
                     {products?.filter(product => product.collectionId === selectedCollection).map((product) => (
                       <option key={product._id} value={product._id}>
-                        {product.code}
+                      {toPersianDigits(product.code)}
                       </option>
                     ))}
                   </select>
@@ -278,38 +353,39 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
                   <label className="block text-sm font-medium text-gray-300 mb-2">رنگ</label>
                   <div className="auth-input-field bg-gray-700 text-gray-400 cursor-not-allowed">
                     {selectedProduct ? 
-                      products?.find(p => p._id === selectedProduct)?.color || 'نامشخص' : 
+                      products?.find(p => p._id === selectedProduct)?.color
+                        ? formatColorLabel(products.find(p => p._id === selectedProduct)!.color)
+                        : 'نامشخص' : 
                       'ابتدا محصول را انتخاب کنید'
                     }
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">طول (X)</label>
-                  <input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    value={newItemSizeX}
-                    onChange={(e) => setNewItemSizeX(parseFloat(e.target.value) || 1)}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">سایز</label>
+                  <select
+                    value={newItemSizeId || ''}
+                    onChange={(event) =>
+                      setNewItemSizeId(
+                        event.target.value ? (event.target.value as Id<'sizes'>) : null,
+                      )
+                    }
                     className="auth-input-field"
-                    dir="ltr"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">عرض (Y)</label>
-                  <input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    value={newItemSizeY}
-                    onChange={(e) => setNewItemSizeY(parseFloat(e.target.value) || 1)}
-                    className="auth-input-field"
-                    dir="ltr"
-                  />
+                    disabled={!sizes || sizes.length === 0}
+                  >
+                    <option value="">
+                      {sizes && sizes.length > 0
+                        ? 'انتخاب سایز'
+                        : 'ابتدا سایز تعریف کنید'}
+                    </option>
+                    {sizes?.map((size) => (
+                      <option key={size._id} value={size._id}>
+                        {formatSizeLabel(size)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 
                 <div>
@@ -327,7 +403,7 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
 
               <button
                 onClick={handleAddNewItem}
-                disabled={!selectedProduct}
+                disabled={!selectedProduct || !newItemSizeId || newItemQuantity <= 0}
                 className="auth-button disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 + افزودن آیتم جدید
@@ -342,10 +418,13 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
               {editedItems.map((item, index) => {
                 const productDetails = getProductDetails(item.productId);
                 const previewImage = productDetails?.product.imageUrls?.[0];
+                const matchedSize = findSizeByDimensions(sizes, item.sizeX, item.sizeY);
                 return (
                   <div key={item._id} className="p-4 border border-gray-600 rounded-lg bg-gray-800/30">
                     <div className="flex justify-between items-center mb-3">
-                      <h5 className="font-medium text-gray-200">آیتم {index + 1}</h5>
+                      <h5 className="font-medium text-gray-200">
+                        آیتم {formatQuantity(index + 1)}
+                      </h5>
                       <button
                         onClick={() => handleRemoveItem(index)}
                         disabled={editedItems.length <= 1}
@@ -359,10 +438,13 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
                     <div className="mb-3 p-3 bg-gray-700/50 rounded-lg">
                       <div className="text-sm text-gray-400 space-y-2">
                         <div>
-                          شرکت: {productDetails?.company.name || 'نامشخص'} | 
-                          مجموعه: {productDetails?.collection.name || 'نامشخص'} | 
-                          محصول: {productDetails?.product.code || 'نامشخص'} | 
-                          رنگ: {item.color || 'نامشخص'}
+                          شرکت: {productDetails?.company.name || 'نامشخص'} |{' '}
+                          مجموعه: {productDetails?.collection.name || 'نامشخص'} |{' '}
+                          محصول:{' '}
+                          {productDetails?.product.code
+                            ? toPersianDigits(productDetails.product.code)
+                            : 'نامشخص'} |{' '}
+                          رنگ: {item.color ? formatColorLabel(item.color) : 'نامشخص'}
                         </div>
                         {previewImage && (
                           <ImageHoverPreview
@@ -386,32 +468,26 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">
-                          طول (X)
+                          سایز
                         </label>
-                        <input
-                          type="number"
-                          min="0.1"
-                          step="0.1"
-                          value={item.sizeX}
-                          onChange={(e) => handleUpdateItem(index, 'sizeX', parseFloat(e.target.value) || 0)}
+                        <select
+                          value={matchedSize?._id ?? ''}
+                          onChange={(event) => handleUpdateItemSize(index, event.target.value)}
                           className="auth-input-field"
-                          dir="ltr"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">
-                          عرض (Y)
-                        </label>
-                        <input
-                          type="number"
-                          min="0.1"
-                          step="0.1"
-                          value={item.sizeY}
-                          onChange={(e) => handleUpdateItem(index, 'sizeY', parseFloat(e.target.value) || 0)}
-                          className="auth-input-field"
-                          dir="ltr"
-                        />
+                        >
+                          <option value="">انتخاب سایز</option>
+                          {sizes?.map((size) => (
+                            <option key={size._id} value={size._id}>
+                              {formatSizeLabel(size)}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-xs text-gray-400">
+                          فعلی:{' '}
+                          {matchedSize
+                            ? formatSizeLabel(matchedSize)
+                            : `${formatDimension(item.sizeX)}*${formatDimension(item.sizeY)}`}
+                        </p>
                       </div>
                       
                       <div>
@@ -422,10 +498,21 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
                           type="number"
                           min="1"
                           value={item.quantity}
-                          onChange={(e) => handleUpdateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                          onChange={(e) => handleUpdateItemQuantity(index, parseInt(e.target.value) || 1)}
                           className="auth-input-field"
                           dir="ltr"
                         />
+                      </div>
+                      
+                      <div className="flex items-end">
+                        <span className="text-sm text-gray-400">
+                          {(() => {
+                            const match = findSizeByDimensions(sizes, item.sizeX, item.sizeY);
+                            return match
+                              ? formatSizeLabel(match)
+                              : `${formatDimension(item.sizeX)}*${formatDimension(item.sizeY)}`;
+                          })()}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -438,7 +525,7 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
               <div className="flex justify-between items-center">
                 <span className="text-blue-400 font-medium">تعداد کل آیتم‌ها:</span>
                 <span className="text-blue-400 font-bold text-lg">
-                  {editedItems.length} آیتم
+                  {formatQuantity(editedItems.length)} آیتم
                 </span>
               </div>
             </div>

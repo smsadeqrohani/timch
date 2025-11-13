@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
@@ -11,6 +11,53 @@ interface OrderItem {
   sizeY: number;
   quantity: number;
 }
+
+type RawSizeType = 'mostatil' | 'morabba' | 'dayere' | 'gerd' | 'beyzi';
+type SizeType = 'mostatil' | 'morabba' | 'gerd' | 'beyzi';
+
+interface SizeDoc {
+  _id: Id<'sizes'>;
+  _creationTime: number;
+  x: number;
+  y: number;
+  type: RawSizeType;
+}
+
+const typeLabels: Record<SizeType, string> = {
+  mostatil: 'مستطیل',
+  morabba: 'مربع',
+  gerd: 'گرد',
+  beyzi: 'بیضی',
+};
+
+const toPersianDigits = (value: string): string =>
+  value.replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]).replace(/\./g, '٫');
+
+const formatDimension = (value: number) => {
+  const raw = value.toString().replace(/\.?0+$/, '');
+  return toPersianDigits(raw);
+};
+
+const normalizeSizeType = (type: RawSizeType): SizeType =>
+  type === 'dayere' ? 'gerd' : type;
+
+const getTypeLabel = (type: RawSizeType) => typeLabels[normalizeSizeType(type)];
+
+const formatSizeLabel = (size: SizeDoc) =>
+  `${getTypeLabel(size.type)} ${formatDimension(size.x)}*${formatDimension(size.y)}`;
+
+const findSizeByDimensions = (
+  sizes: SizeDoc[] | undefined,
+  x: number,
+  y: number,
+) =>
+  sizes?.find(
+    (size) => Math.abs(size.x - x) < 1e-6 && Math.abs(size.y - y) < 1e-6,
+  );
+
+const formatQuantity = (value: number) => toPersianDigits(value.toString());
+
+const formatColorLabel = (color: string) => toPersianDigits(color);
 
 interface ProductWithDetails {
   _id: Id<"products">;
@@ -52,6 +99,8 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
   const [selectedCollection, setSelectedCollection] = useState<Id<"collections"> | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Id<"products"> | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>('');
+  const [selectedSizeId, setSelectedSizeId] = useState<Id<'sizes'> | null>(null);
+  const [itemQuantity, setItemQuantity] = useState(1);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [notes, setNotes] = useState('');
   const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
@@ -66,11 +115,17 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
   const products = useQuery(api.products.getByCollectionId, 
     selectedCollection ? { collectionId: selectedCollection } : "skip"
   );
+  const sizes = useQuery(api.sizes.list);
   const currentUser = useQuery(api.auth.loggedInUser);
 
   // Mutations
   const createCustomer = useMutation(api.customers.create);
   const createOrder = useMutation(api.orders.create);
+
+  useEffect(() => {
+    setSelectedSizeId(null);
+    setItemQuantity(1);
+  }, [selectedProduct, selectedColor]);
 
   // Filter customers based on search
   const filteredCustomers = customers?.filter(customer =>
@@ -91,21 +146,30 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
       setErrors({ general: 'لطفاً محصول و رنگ را انتخاب کنید' });
       return;
     }
+    if (!sizes || sizes.length === 0) {
+      setErrors({ general: 'لطفاً ابتدا سایز تعریف کنید' });
+      return;
+    }
+    if (!selectedSizeId) {
+      setErrors({ general: 'لطفاً سایز را انتخاب کنید' });
+      return;
+    }
+    if (itemQuantity <= 0) {
+      setErrors({ general: 'تعداد باید بزرگتر از صفر باشد' });
+      return;
+    }
 
-    // Get values from the form inputs
-    const sizeXInput = document.querySelector('input[placeholder="طول"]') as HTMLInputElement;
-    const sizeYInput = document.querySelector('input[placeholder="عرض"]') as HTMLInputElement;
-    const quantityInput = document.querySelector('input[placeholder="تعداد"]') as HTMLInputElement;
-
-    const sizeX = parseInt(sizeXInput?.value) || 1;
-    const sizeY = parseInt(sizeYInput?.value) || 1;
-    const quantity = parseInt(quantityInput?.value) || 1;
+    const selectedSize = sizes.find((size) => size._id === selectedSizeId);
+    if (!selectedSize) {
+      setErrors({ general: 'سایز انتخاب شده یافت نشد' });
+      return;
+    }
 
     const existingItemIndex = orderItems.findIndex(item => 
       item.productId === selectedProduct && 
       item.color === selectedColor &&
-      item.sizeX === sizeX && 
-      item.sizeY === sizeY
+      item.sizeX === selectedSize.x && 
+      item.sizeY === selectedSize.y
     );
     
     if (existingItemIndex >= 0) {
@@ -113,7 +177,7 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
       const newItems = [...orderItems];
       newItems[existingItemIndex] = {
         ...newItems[existingItemIndex],
-        quantity: newItems[existingItemIndex].quantity + quantity
+        quantity: newItems[existingItemIndex].quantity + itemQuantity
       };
       setOrderItems(newItems);
     } else {
@@ -121,16 +185,15 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
       setOrderItems([...orderItems, {
         productId: selectedProduct,
         color: selectedColor,
-        sizeX,
-        sizeY,
-        quantity
+        sizeX: selectedSize.x,
+        sizeY: selectedSize.y,
+        quantity: itemQuantity
       }]);
     }
 
-    // Reset form inputs
-    if (sizeXInput) sizeXInput.value = "1";
-    if (sizeYInput) sizeYInput.value = "1";
-    if (quantityInput) quantityInput.value = "1";
+    setSelectedSizeId(null);
+    setItemQuantity(1);
+    setErrors({});
   };
 
   // Remove item from order
@@ -146,11 +209,16 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
     setOrderItems(newItems);
   };
 
-  // Update item size
-  const updateItemSize = (index: number, field: 'sizeX' | 'sizeY', value: number) => {
-    if (value <= 0) return;
+  const handleOrderItemSizeChange = (index: number, sizeId: string) => {
+    if (!sizes) return;
+    const size = sizes.find((s) => s._id === (sizeId as Id<'sizes'>));
+    if (!size) return;
     const newItems = [...orderItems];
-    newItems[index][field] = value;
+    newItems[index] = {
+      ...newItems[index],
+      sizeX: size.x,
+      sizeY: size.y,
+    };
     setOrderItems(newItems);
   };
 
@@ -432,7 +500,7 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
                   <option value="">انتخاب محصول</option>
                   {products?.filter(product => product.collectionId === selectedCollection).map((product) => (
                     <option key={product._id} value={product._id}>
-                      {product.code}
+                      {toPersianDigits(product.code)}
                     </option>
                   ))}
                 </select>
@@ -452,7 +520,7 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
                     p.code === products.find(prod => prod._id === selectedProduct)?.code
                   ).map((product) => (
                     <option key={product._id} value={product.color}>
-                      {product.color}
+                        {formatColorLabel(product.color)}
                     </option>
                   ))}
                 </select>
@@ -462,39 +530,57 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
             {selectedProduct && selectedColor && (
               <div className="border border-gray-600 rounded-lg p-4 bg-gray-800/30">
                 <h4 className="text-md font-semibold text-gray-200 mb-3">افزودن به سفارش</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">ابعاد X</label>
-                    <input
-                      type="number"
-                      min="1"
-                      defaultValue="1"
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">سایز</label>
+                    <select
+                      value={selectedSizeId || ''}
+                      onChange={(event) =>
+                        setSelectedSizeId(
+                          event.target.value
+                            ? (event.target.value as Id<'sizes'>)
+                            : null,
+                        )
+                      }
                       className="auth-input-field"
-                      placeholder="طول"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">ابعاد Y</label>
-                    <input
-                      type="number"
-                      min="1"
-                      defaultValue="1"
-                      className="auth-input-field"
-                      placeholder="عرض"
-                    />
+                      disabled={!sizes || sizes.length === 0}
+                    >
+                      <option value="">
+                        {sizes && sizes.length > 0
+                          ? 'انتخاب سایز'
+                          : 'ابتدا سایز تعریف کنید'}
+                      </option>
+                      {sizes?.map((size) => (
+                        <option key={size._id} value={size._id}>
+                          {formatSizeLabel(size)}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">تعداد</label>
                     <input
                       type="number"
                       min="1"
-                      defaultValue="1"
+                      value={itemQuantity}
+                      onChange={(event) =>
+                        setItemQuantity(Math.max(1, parseInt(event.target.value) || 1))
+                      }
                       className="auth-input-field"
-                      placeholder="تعداد"
+                      dir="ltr"
                     />
                   </div>
                 </div>
-                <button onClick={addOrderItem} className="auth-button w-full">
+                <button
+                  onClick={addOrderItem}
+                  disabled={
+                    !selectedProduct ||
+                    !selectedColor ||
+                    !selectedSizeId ||
+                    itemQuantity <= 0
+                  }
+                  className="auth-button w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   + افزودن به سفارش
                 </button>
               </div>
@@ -509,6 +595,7 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
                 {orderItems.map((item, index) => {
                   const product = getProductDetails(item.productId);
                   const previewImage = product?.imageUrls?.[0];
+                  const matchedSize = findSizeByDimensions(sizes, item.sizeX, item.sizeY);
                   return (
                     <div key={index} className="p-4 border border-gray-600 rounded-lg bg-gray-800/30">
                       <div className="flex items-center justify-between">
@@ -516,9 +603,12 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
                           <div className="text-sm text-gray-400 space-y-1">
                             <div>شرکت: {product?.collection?.company?.name || 'نامشخص'}</div>
                             <div>مجموعه: {product?.collection?.name || 'نامشخص'}</div>
-                            <div>محصول: {product?.code || 'نامشخص'}</div>
+                            <div>
+                              محصول:{' '}
+                              {product?.code ? toPersianDigits(product.code) : 'نامشخص'}
+                            </div>
                             <div className="flex items-center gap-2">
-                              <span>رنگ: {item.color || 'نامشخص'}</span>
+                              <span>رنگ: {item.color ? formatColorLabel(item.color) : 'نامشخص'}</span>
                               {previewImage && (
                                 <ImageHoverPreview
                                   imageUrl={previewImage}
@@ -537,26 +627,25 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <div className="flex items-center gap-1">
-                            <label className="text-sm text-gray-300">X:</label>
-                            <input
-                              type="number"
-                              value={item.sizeX}
-                              onChange={(e) => updateItemSize(index, 'sizeX', parseInt(e.target.value) || 1)}
-                              className="w-16 h-8 px-2 text-center bg-gray-700 border border-gray-600 rounded text-gray-200"
-                              min="1"
-                            />
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <label className="text-sm text-gray-300">Y:</label>
-                            <input
-                              type="number"
-                              value={item.sizeY}
-                              onChange={(e) => updateItemSize(index, 'sizeY', parseInt(e.target.value) || 1)}
-                              className="w-16 h-8 px-2 text-center bg-gray-700 border border-gray-600 rounded text-gray-200"
-                              min="1"
-                            />
+                            <label className="text-sm text-gray-300">سایز:</label>
+                            <select
+                              value={
+                                matchedSize?._id ?? ''
+                              }
+                              onChange={(event) =>
+                                handleOrderItemSizeChange(index, event.target.value)
+                              }
+                              className="h-8 w-40 px-2 bg-gray-700 border border-gray-600 rounded text-gray-200"
+                            >
+                              <option value="">انتخاب سایز</option>
+                              {sizes?.map((size) => (
+                                <option key={size._id} value={size._id}>
+                                  {formatSizeLabel(size)}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                           <div className="flex items-center gap-1">
                             <label className="text-sm text-gray-300">تعداد:</label>
@@ -568,6 +657,11 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
                               min="1"
                             />
                           </div>
+                          <span className="text-sm text-gray-400">
+                            {matchedSize
+                              ? formatSizeLabel(matchedSize)
+                              : `${formatDimension(item.sizeX)}*${formatDimension(item.sizeY)}`}
+                          </span>
                           <button
                             type="button"
                             onClick={() => removeOrderItem(index)}
@@ -585,7 +679,7 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
               <div className="flex justify-between items-center p-4 bg-gray-800/50 rounded-md">
                 <span className="font-medium text-gray-200">تعداد آیتم‌ها:</span>
                 <span className="text-lg font-bold text-gray-400">
-                  {orderItems.length} آیتم
+                  {formatQuantity(orderItems.length)} آیتم
                 </span>
               </div>
             </div>

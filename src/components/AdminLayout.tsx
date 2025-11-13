@@ -11,6 +11,7 @@ import OrdersPage from './OrdersPage';
 import { usePermissions } from '../hooks/usePermissions';
 import { useUserRoles } from '../hooks/useUserRoles';
 import CatalogMain from './CatalogMain';
+import SizesPage from './SizesPage';
 import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
 import OrderFormPage from './OrderFormPage';
 import OrderEditPage from './OrderEditPage';
@@ -58,6 +59,12 @@ const menuItems: MenuItem[] = [
     permission: 'catalog:view'
   },
   {
+    id: 'sizes',
+    title: 'سایزها',
+    icon: '📐',
+    permission: 'sizes:view'
+  },
+  {
     id: 'customers',
     title: 'مشتریان',
     icon: '👤',
@@ -103,6 +110,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
     if (path.startsWith('/orders/')) return 'orders';
     if (path === '/orders') return 'orders';
     if (path === '/catalog') return 'catalog';
+    if (path === '/sizes') return 'sizes';
     if (path === '/customers') return 'customers';
     if (path === '/users') return 'users';
     if (path === '/roles') return 'roles';
@@ -314,6 +322,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
             } />
             <Route path="/catalog" element={
               hasPermission('catalog:view') ? <CatalogMain /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای مشاهده این بخش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/sizes" element={
+              hasPermission('sizes:view') ? <SizesPage /> : (
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center">
                     <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
