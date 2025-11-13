@@ -9,6 +9,7 @@ interface Product {
   collectionId: Id<"collections">;
   code: string;
   color: string;
+  imageUrls?: string[];
 }
 
 interface CollectionViewProps {
@@ -16,57 +17,150 @@ interface CollectionViewProps {
   collectionName: string;
 }
 
+interface ColorFormEntry {
+  color: string;
+  imageUrls: string[];
+}
+
+interface ProductFormState {
+  code: string;
+  colors: ColorFormEntry[];
+}
+
 export default function CollectionView({ collectionId, collectionName }: CollectionViewProps) {
   // Queries
   const codes = useQuery(api.products.getCodesByCollectionId, { collectionId });
   const products = useQuery(api.products.getByCollectionId, { collectionId });
   
+  const createEmptyColorEntry = (): ColorFormEntry => ({
+    color: '',
+    imageUrls: [''],
+  });
+  const buildEmptyFormState = (): ProductFormState => ({
+    code: '',
+    colors: [createEmptyColorEntry()],
+  });
+  const updateColorEntry = (
+    setter: React.Dispatch<React.SetStateAction<ProductFormState>>,
+    index: number,
+    updater: (entry: ColorFormEntry) => ColorFormEntry
+  ) => {
+    setter((prev) => {
+      const colors = [...prev.colors];
+      colors[index] = updater(colors[index]);
+      return { ...prev, colors };
+    });
+  };
+  const addColorEntry = (setter: React.Dispatch<React.SetStateAction<ProductFormState>>) => {
+    setter((prev) => ({
+      ...prev,
+      colors: [...prev.colors, createEmptyColorEntry()],
+    }));
+  };
+  const removeColorEntry = (
+    setter: React.Dispatch<React.SetStateAction<ProductFormState>>,
+    index: number
+  ) => {
+    setter((prev) => {
+      if (prev.colors.length <= 1) {
+        return prev;
+      }
+      return {
+        ...prev,
+        colors: prev.colors.filter((_, i) => i !== index),
+      };
+    });
+  };
+  const setColorValue = (
+    setter: React.Dispatch<React.SetStateAction<ProductFormState>>,
+    index: number,
+    value: string
+  ) => {
+    updateColorEntry(setter, index, (entry) => ({
+      ...entry,
+      color: value,
+    }));
+  };
+  const setImageUrlValue = (
+    setter: React.Dispatch<React.SetStateAction<ProductFormState>>,
+    colorIndex: number,
+    imageIndex: number,
+    value: string
+  ) => {
+    updateColorEntry(setter, colorIndex, (entry) => {
+      const imageUrls = [...entry.imageUrls];
+      imageUrls[imageIndex] = value;
+      return { ...entry, imageUrls };
+    });
+  };
+  const addImageUrlField = (
+    setter: React.Dispatch<React.SetStateAction<ProductFormState>>,
+    colorIndex: number
+  ) => {
+    updateColorEntry(setter, colorIndex, (entry) => ({
+      ...entry,
+      imageUrls: [...entry.imageUrls, ''],
+    }));
+  };
+  const removeImageUrlField = (
+    setter: React.Dispatch<React.SetStateAction<ProductFormState>>,
+    colorIndex: number,
+    imageIndex: number
+  ) => {
+    updateColorEntry(setter, colorIndex, (entry) => ({
+      ...entry,
+      imageUrls: entry.imageUrls.filter((_, i) => i !== imageIndex),
+    }));
+  };
+
   // Mutations
   const createProduct = useMutation(api.products.create);
-  const updateProduct = useMutation(api.products.update);
   const removeProduct = useMutation(api.products.remove);
   
   // State for create product form
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [formData, setFormData] = useState({
-    code: '',
-    colors: [''] // Start with at least one color field
-  });
+  const [formData, setFormData] = useState<ProductFormState>(buildEmptyFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // State for editing product code
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [editingProducts, setEditingProducts] = useState<Product[]>([]);
-  const [editFormData, setEditFormData] = useState({
-    code: '',
-    colors: [''] // Start with at least one color field
-  });
+  const [editFormData, setEditFormData] = useState<ProductFormState>(buildEmptyFormState);
+  const resetCreateForm = () => setFormData(buildEmptyFormState());
+  const resetEditForm = () => setEditFormData(buildEmptyFormState());
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
-
-  const hasMultipleColors = useQuery(
-    api.products.hasMultipleColors,
-    editingCode ? { collectionId, code: editingCode } : "skip"
-  );
 
   // Form handlers
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.code.trim() || formData.colors.some(c => !c.trim())) return;
+    const trimmedCode = formData.code.trim();
+    if (
+      !trimmedCode ||
+      formData.colors.length === 0 ||
+      formData.colors.some(({ color }) => !color.trim())
+    ) {
+      return;
+    }
     
     setIsSubmitting(true);
     try {
       // Create products for each color
-      for (const color of formData.colors) {
-        if (color.trim()) {
+      for (const entry of formData.colors) {
+        const trimmedColor = entry.color.trim();
+        if (trimmedColor) {
+          const normalizedImageUrls = entry.imageUrls
+            .map((url) => url.trim())
+            .filter((url) => url.length > 0);
           await createProduct({
             collectionId,
-            code: formData.code.trim(),
-            color: color.trim()
+            code: trimmedCode,
+            color: trimmedColor,
+            imageUrls: normalizedImageUrls.length > 0 ? normalizedImageUrls : undefined,
           });
         }
       }
-      setFormData({ code: '', colors: [''] });
+      resetCreateForm();
       setShowCreateForm(false);
     } catch (error) {
       console.error('Error creating products:', error);
@@ -77,38 +171,47 @@ export default function CollectionView({ collectionId, collectionName }: Collect
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
+    const { value } = e.target;
+    setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value
+      code: value,
     }));
   };
 
   const handleColorChange = (index: number, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      colors: prev.colors.map((color, i) => i === index ? value : color)
-    }));
+    setColorValue(setFormData, index, value);
   };
 
   const addColorField = () => {
-    setFormData(prev => ({
-      ...prev,
-      colors: [...prev.colors, '']
-    }));
+    addColorEntry(setFormData);
   };
 
   const removeColorField = (index: number) => {
-    if (formData.colors.length > 1) {
-      setFormData(prev => ({
-        ...prev,
-        colors: prev.colors.filter((_, i) => i !== index)
-      }));
-    }
+    removeColorEntry(setFormData, index);
+  };
+
+  const handleImageUrlChange = (colorIndex: number, imageIndex: number, value: string) => {
+    setImageUrlValue(setFormData, colorIndex, imageIndex, value);
+  };
+
+  const addImageField = (colorIndex: number) => {
+    addImageUrlField(setFormData, colorIndex);
+  };
+
+  const removeImageField = (colorIndex: number, imageIndex: number) => {
+    removeImageUrlField(setFormData, colorIndex, imageIndex);
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editFormData.code.trim() || editFormData.colors.some(c => !c.trim())) return;
+    const trimmedCode = editFormData.code.trim();
+    if (
+      !trimmedCode ||
+      editFormData.colors.length === 0 ||
+      editFormData.colors.some(({ color }) => !color.trim())
+    ) {
+      return;
+    }
     
     setIsEditSubmitting(true);
     try {
@@ -118,12 +221,17 @@ export default function CollectionView({ collectionId, collectionName }: Collect
       }
       
       // Then create new products with updated code and colors
-      for (const color of editFormData.colors) {
-        if (color.trim()) {
+      for (const entry of editFormData.colors) {
+        const trimmedColor = entry.color.trim();
+        if (trimmedColor) {
+          const normalizedImageUrls = entry.imageUrls
+            .map((url) => url.trim())
+            .filter((url) => url.length > 0);
           await createProduct({
             collectionId,
-            code: editFormData.code.trim(),
-            color: color.trim()
+            code: trimmedCode,
+            color: trimmedColor,
+            imageUrls: normalizedImageUrls.length > 0 ? normalizedImageUrls : undefined,
           });
         }
       }
@@ -131,7 +239,7 @@ export default function CollectionView({ collectionId, collectionName }: Collect
       setShowEditForm(false);
       setEditingCode(null);
       setEditingProducts([]);
-      setEditFormData({ code: '', colors: [''] });
+      resetEditForm();
     } catch (error) {
       console.error('Error updating products:', error);
       alert('خطا در ویرایش محصولات: ' + (error as Error).message);
@@ -141,41 +249,49 @@ export default function CollectionView({ collectionId, collectionName }: Collect
   };
 
   const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditFormData(prev => ({
+    const { value } = e.target;
+    setEditFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value
+      code: value,
     }));
   };
 
   const handleEditColorChange = (index: number, value: string) => {
-    setEditFormData(prev => ({
-      ...prev,
-      colors: prev.colors.map((color, i) => i === index ? value : color)
-    }));
+    setColorValue(setEditFormData, index, value);
   };
 
   const addEditColorField = () => {
-    setEditFormData(prev => ({
-      ...prev,
-      colors: [...prev.colors, '']
-    }));
+    addColorEntry(setEditFormData);
   };
 
   const removeEditColorField = (index: number) => {
-    if (editFormData.colors.length > 1) {
-      setEditFormData(prev => ({
-        ...prev,
-        colors: prev.colors.filter((_, i) => i !== index)
-      }));
-    }
+    removeColorEntry(setEditFormData, index);
+  };
+
+  const handleEditImageUrlChange = (colorIndex: number, imageIndex: number, value: string) => {
+    setImageUrlValue(setEditFormData, colorIndex, imageIndex, value);
+  };
+
+  const addEditImageField = (colorIndex: number) => {
+    addImageUrlField(setEditFormData, colorIndex);
+  };
+
+  const removeEditImageField = (colorIndex: number, imageIndex: number) => {
+    removeImageUrlField(setEditFormData, colorIndex, imageIndex);
   };
 
   const openEditModal = (code: string, codeProducts: Product[]) => {
     setEditingCode(code);
     setEditingProducts(codeProducts);
     setEditFormData({
-      code: code,
-      colors: codeProducts.map(p => p.color)
+      code,
+      colors: codeProducts.map((product) => ({
+        color: product.color,
+        imageUrls:
+          product.imageUrls && product.imageUrls.length > 0
+            ? [...product.imageUrls]
+            : [''],
+      })),
     });
     setShowEditForm(true);
   };
@@ -204,7 +320,7 @@ export default function CollectionView({ collectionId, collectionName }: Collect
           setShowEditForm(false);
           setEditingCode(null);
           setEditingProducts([]);
-          setEditFormData({ code: '', colors: [''] });
+          resetEditForm();
         } catch (error) {
           console.error('Error deleting products:', error);
           alert('خطا در حذف محصولات: ' + (error as Error).message);
@@ -239,7 +355,12 @@ export default function CollectionView({ collectionId, collectionName }: Collect
             </p>
           </div>
           <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
+            onClick={() => {
+              if (!showCreateForm) {
+                resetCreateForm();
+              }
+              setShowCreateForm(!showCreateForm);
+            }}
             className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -273,27 +394,74 @@ export default function CollectionView({ collectionId, collectionName }: Collect
                   رنگ‌ها *
                 </label>
                 <div className="space-y-2">
-                  {formData.colors.map((color, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={color}
-                        onChange={(e) => handleColorChange(index, e.target.value)}
-                        required
-                        className="flex-1 px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent"
-                        placeholder={`رنگ ${index + 1}`}
-                      />
-                      {formData.colors.length > 1 && (
+                  {formData.colors.map((entry, index) => (
+                    <div
+                      key={index}
+                      className="space-y-3 rounded-lg border border-white/20 bg-white/10 p-3"
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={entry.color}
+                          onChange={(e) => handleColorChange(index, e.target.value)}
+                          required
+                          className="flex-1 px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent"
+                          placeholder={`رنگ ${index + 1}`}
+                        />
+                        {formData.colors.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeColorField(index)}
+                            className="bg-red-500/20 hover:bg-red-500/30 text-red-200 p-2 rounded-lg transition-colors duration-200"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-xs text-blue-100/80">لینک‌های تصویر برای این رنگ (اختیاری)</p>
+                        {entry.imageUrls.length > 0 ? (
+                          entry.imageUrls.map((url, imageIndex) => (
+                            <div key={imageIndex} className="flex items-center gap-2">
+                              <input
+                                type="url"
+                                value={url}
+                                onChange={(e) =>
+                                  handleImageUrlChange(index, imageIndex, e.target.value)
+                                }
+                                className="flex-1 px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent"
+                                placeholder={`لینک تصویر ${imageIndex + 1}`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeImageField(index, imageIndex)}
+                                className="bg-red-500/20 hover:bg-red-500/30 text-red-200 p-2 rounded-lg transition-colors duration-200"
+                                aria-label="حذف لینک تصویر"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="rounded-md border border-dashed border-white/30 px-3 py-2 text-xs text-blue-100/70">
+                            تصویری ثبت نشده است.
+                          </p>
+                        )}
                         <button
                           type="button"
-                          onClick={() => removeColorField(index)}
-                          className="bg-red-500/20 hover:bg-red-500/30 text-red-200 p-2 rounded-lg transition-colors duration-200"
+                          onClick={() => addImageField(index)}
+                          className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-100 px-3 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                           </svg>
+                          افزودن لینک تصویر
                         </button>
-                      )}
+                      </div>
                     </div>
                   ))}
                   <button
@@ -312,14 +480,22 @@ export default function CollectionView({ collectionId, collectionName }: Collect
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  disabled={isSubmitting || !formData.code.trim() || formData.colors.some(c => !c.trim())}
+                  disabled={
+                    isSubmitting ||
+                    !formData.code.trim() ||
+                    formData.colors.length === 0 ||
+                    formData.colors.some(({ color }) => !color.trim())
+                  }
                   className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors duration-200"
                 >
                   {isSubmitting ? 'در حال ایجاد...' : 'ایجاد محصولات'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowCreateForm(false)}
+                  onClick={() => {
+                    setShowCreateForm(false);
+                    resetCreateForm();
+                  }}
                   className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
                 >
                   انصراف
@@ -332,8 +508,8 @@ export default function CollectionView({ collectionId, collectionName }: Collect
 
       {/* Edit Product Modal */}
       {showEditForm && editingCode && (
-        <div className="modal-backdrop p-4">
-          <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700/50 w-full max-w-md">
+        <div className="modal-backdrop p-4 items-start">
+          <div className="modal-scrollable bg-gray-800 rounded-lg shadow-lg border border-gray-700/50 w-full max-w-md">
             <div className="px-6 py-4 border-b border-gray-700/50">
               <h3 className="text-xl font-semibold text-white">ویرایش محصول</h3>
               <p className="text-gray-300 text-sm mt-1">
@@ -364,27 +540,74 @@ export default function CollectionView({ collectionId, collectionName }: Collect
                     رنگ‌ها *
                   </label>
                   <div className="space-y-2">
-                    {editFormData.colors.map((color, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={color}
-                          onChange={(e) => handleEditColorChange(index, e.target.value)}
-                          required
-                          className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder={`رنگ ${index + 1}`}
-                        />
-                        {editFormData.colors.length > 1 && (
+                    {editFormData.colors.map((entry, index) => (
+                      <div
+                        key={index}
+                        className="space-y-3 rounded-lg border border-gray-700/80 bg-gray-800/60 p-3"
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={entry.color}
+                            onChange={(e) => handleEditColorChange(index, e.target.value)}
+                            required
+                            className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder={`رنگ ${index + 1}`}
+                          />
+                          {editFormData.colors.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeEditColorField(index)}
+                              className="bg-red-600/20 hover:bg-red-600/30 text-red-300 p-2 rounded-lg transition-colors duration-200"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-xs text-gray-300/80">لینک‌های تصویر برای این رنگ (اختیاری)</p>
+                          {entry.imageUrls.length > 0 ? (
+                            entry.imageUrls.map((url, imageIndex) => (
+                              <div key={imageIndex} className="flex items-center gap-2">
+                                <input
+                                  type="url"
+                                  value={url}
+                                  onChange={(e) =>
+                                    handleEditImageUrlChange(index, imageIndex, e.target.value)
+                                  }
+                                  className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  placeholder={`لینک تصویر ${imageIndex + 1}`}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeEditImageField(index, imageIndex)}
+                                  className="bg-red-600/20 hover:bg-red-600/30 text-red-300 p-2 rounded-lg transition-colors duration-200"
+                                  aria-label="حذف لینک تصویر"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="rounded-md border border-dashed border-gray-600 px-3 py-2 text-xs text-gray-300/70">
+                              تصویری ثبت نشده است.
+                            </p>
+                          )}
                           <button
                             type="button"
-                            onClick={() => removeEditColorField(index)}
-                            className="bg-red-600/20 hover:bg-red-600/30 text-red-300 p-2 rounded-lg transition-colors duration-200"
+                            onClick={() => addEditImageField(index)}
+                            className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 px-3 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                             </svg>
+                            افزودن لینک تصویر
                           </button>
-                        )}
+                        </div>
                       </div>
                     ))}
                     <button
@@ -403,7 +626,12 @@ export default function CollectionView({ collectionId, collectionName }: Collect
                 <div className="flex gap-3">
                   <button
                     type="submit"
-                    disabled={isEditSubmitting || !editFormData.code.trim() || editFormData.colors.some(c => !c.trim())}
+                  disabled={
+                    isEditSubmitting ||
+                    !editFormData.code.trim() ||
+                    editFormData.colors.length === 0 ||
+                    editFormData.colors.some(({ color }) => !color.trim())
+                  }
                     className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors duration-200"
                   >
                     {isEditSubmitting ? 'در حال ویرایش...' : 'ویرایش محصولات'}
@@ -422,7 +650,7 @@ export default function CollectionView({ collectionId, collectionName }: Collect
                       setShowEditForm(false);
                       setEditingCode(null);
                       setEditingProducts([]);
-                      setEditFormData({ code: '', colors: [''] });
+                      resetEditForm();
                     }}
                     className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
                   >
@@ -468,14 +696,35 @@ export default function CollectionView({ collectionId, collectionName }: Collect
                     const colorB = parseInt(b.color) || 0;
                     return colorA - colorB;
                   })
-                  .map((product) => (
-                    <span
-                      key={product._id}
-                      className="bg-gray-700/50 text-white px-3 py-1 rounded-lg text-sm border border-gray-600/50"
-                    >
-                      {product.color}
-                    </span>
-                  ))}
+                  .map((product) => {
+                    const hasImages = product.imageUrls && product.imageUrls.length > 0;
+                    const previewImage = hasImages ? product.imageUrls![0] : null;
+                    return (
+                      <div key={product._id} className="relative group">
+                        <span
+                          className="bg-gray-700/50 text-white px-3 py-1 rounded-lg text-sm border border-gray-600/50 inline-flex items-center"
+                        >
+                          {product.color}
+                          {hasImages && (
+                            <span className="ml-2 text-xs text-blue-200">
+                              {product.imageUrls!.length} تصویر
+                            </span>
+                          )}
+                        </span>
+                        {previewImage && (
+                          <div className="pointer-events-none absolute left-1/2 top-0 z-40 hidden -translate-x-1/2 -translate-y-full transform pb-3 group-hover:block">
+                            <div className="h-60 w-80 overflow-hidden rounded-lg border border-white/20 bg-gray-900/90 shadow-xl backdrop-blur-sm">
+                              <img
+                                src={previewImage}
+                                alt={`پیش‌نمایش ${product.code} - ${product.color}`}
+                                className="h-full w-full object-contain p-2"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </div>

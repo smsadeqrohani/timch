@@ -39,10 +39,12 @@ const applicationTables = {
     collectionId: v.id("collections"),
     code: v.string(),
     color: v.string(),
+    imageUrls: v.optional(v.array(v.string())),
   })
     .index("byCollectionId", ["collectionId"])
     .index("byCode", ["code"])
-    .index("byCollectionIdAndCode", ["collectionId", "code"]),
+    .index("byCollectionIdAndCode", ["collectionId", "code"])
+    .index("byCollectionIdCodeAndColor", ["collectionId", "code", "color"]),
 
   roles: defineTable({
     name: v.string(),

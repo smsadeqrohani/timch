@@ -1,16 +1,19 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+const productFields = {
+  _id: v.id("products"),
+  _creationTime: v.number(),
+  collectionId: v.id("collections"),
+  code: v.string(),
+  color: v.string(),
+  imageUrls: v.optional(v.array(v.string())),
+};
+
 // Get all products
 export const list = query({
   args: {},
-  returns: v.array(v.object({
-    _id: v.id("products"),
-    _creationTime: v.number(),
-    collectionId: v.id("collections"),
-    code: v.string(),
-    color: v.string(),
-  })),
+  returns: v.array(v.object(productFields)),
   handler: async (ctx) => {
     return await ctx.db.query("products").collect();
   },
@@ -20,13 +23,7 @@ export const list = query({
 export const get = query({
   args: { id: v.id("products") },
   returns: v.union(
-    v.object({
-      _id: v.id("products"),
-      _creationTime: v.number(),
-      collectionId: v.id("collections"),
-      code: v.string(),
-      color: v.string(),
-    }),
+    v.object(productFields),
     v.null()
   ),
   handler: async (ctx, args) => {
@@ -37,13 +34,7 @@ export const get = query({
 // Get products by collection ID
 export const getByCollectionId = query({
   args: { collectionId: v.id("collections") },
-  returns: v.array(v.object({
-    _id: v.id("products"),
-    _creationTime: v.number(),
-    collectionId: v.id("collections"),
-    code: v.string(),
-    color: v.string(),
-  })),
+  returns: v.array(v.object(productFields)),
   handler: async (ctx, args) => {
     const products = await ctx.db
       .query("products")
@@ -58,13 +49,7 @@ export const getByCollectionId = query({
 // Get products by code
 export const getByCode = query({
   args: { code: v.string() },
-  returns: v.array(v.object({
-    _id: v.id("products"),
-    _creationTime: v.number(),
-    collectionId: v.id("collections"),
-    code: v.string(),
-    color: v.string(),
-  })),
+  returns: v.array(v.object(productFields)),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("products")
@@ -79,13 +64,7 @@ export const getByCollectionIdAndCode = query({
     collectionId: v.id("collections"),
     code: v.string()
   },
-  returns: v.array(v.object({
-    _id: v.id("products"),
-    _creationTime: v.number(),
-    collectionId: v.id("collections"),
-    code: v.string(),
-    color: v.string(),
-  })),
+  returns: v.array(v.object(productFields)),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("products")
@@ -135,26 +114,35 @@ export const create = mutation({
     collectionId: v.id("collections"),
     code: v.string(),
     color: v.string(),
+    imageUrls: v.optional(v.array(v.string())),
   },
   returns: v.id("products"),
   handler: async (ctx, args) => {
+    const trimmedCode = args.code.trim();
+    const trimmedColor = args.color.trim();
     // Check if product already exists with same collection, code, and color
     const existing = await ctx.db
       .query("products")
-      .withIndex("byCollectionIdAndCode", (q) => 
-        q.eq("collectionId", args.collectionId).eq("code", args.code)
+      .withIndex("byCollectionIdCodeAndColor", (q) =>
+        q.eq("collectionId", args.collectionId).eq("code", trimmedCode).eq("color", trimmedColor)
       )
-      .filter((q) => q.eq(q.field("color"), args.color))
       .first();
 
     if (existing) {
       throw new Error("محصول با این مجموعه، کد و رنگ قبلاً ثبت شده است");
     }
 
+    const normalizedImageUrls = args.imageUrls
+      ?.map((url) => url.trim())
+      .filter((url) => url.length > 0);
+
     return await ctx.db.insert("products", {
       collectionId: args.collectionId,
-      code: args.code.trim(),
-      color: args.color.trim(),
+      code: trimmedCode,
+      color: trimmedColor,
+      ...(normalizedImageUrls && normalizedImageUrls.length > 0
+        ? { imageUrls: normalizedImageUrls }
+        : {}),
     });
   },
 });
@@ -166,26 +154,35 @@ export const update = mutation({
     collectionId: v.id("collections"),
     code: v.string(),
     color: v.string(),
+    imageUrls: v.optional(v.array(v.string())),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const trimmedCode = args.code.trim();
+    const trimmedColor = args.color.trim();
     // Check if another product exists with same collection, code, and color
     const existing = await ctx.db
       .query("products")
-      .withIndex("byCollectionIdAndCode", (q) => 
-        q.eq("collectionId", args.collectionId).eq("code", args.code)
+      .withIndex("byCollectionIdCodeAndColor", (q) =>
+        q.eq("collectionId", args.collectionId).eq("code", trimmedCode).eq("color", trimmedColor)
       )
-      .filter((q) => q.eq(q.field("color"), args.color))
       .first();
 
     if (existing && existing._id !== args.id) {
       throw new Error("محصول دیگری با این مجموعه، کد و رنگ وجود دارد");
     }
 
+    const normalizedImageUrls = args.imageUrls
+      ?.map((url) => url.trim())
+      .filter((url) => url.length > 0);
+
     await ctx.db.patch(args.id, {
       collectionId: args.collectionId,
-      code: args.code.trim(),
-      color: args.color.trim(),
+      code: trimmedCode,
+      color: trimmedColor,
+      ...(args.imageUrls !== undefined
+        ? { imageUrls: normalizedImageUrls ?? [] }
+        : {}),
     });
     return null;
   },
@@ -233,20 +230,24 @@ export const bulkCreateFromCollection = mutation({
     
     for (const productCode of args.products) {
       for (const colorCode of args.colors) {
+        const trimmedCode = productCode.trim();
+        const trimmedColor = colorCode.trim();
         // Check if product already exists
         const existing = await ctx.db
           .query("products")
-          .withIndex("byCollectionIdAndCode", (q) => 
-            q.eq("collectionId", args.collectionId).eq("code", productCode)
+          .withIndex("byCollectionIdCodeAndColor", (q) =>
+            q
+              .eq("collectionId", args.collectionId)
+              .eq("code", trimmedCode)
+              .eq("color", trimmedColor)
           )
-          .filter((q) => q.eq(q.field("color"), colorCode))
           .first();
 
         if (!existing) {
           const id = await ctx.db.insert("products", {
             collectionId: args.collectionId,
-            code: productCode.trim(),
-            color: colorCode.trim(),
+            code: trimmedCode,
+            color: trimmedColor,
           });
           createdIds.push(id);
         }
@@ -262,13 +263,7 @@ export const search = query({
   args: { 
     query: v.string(),
   },
-  returns: v.array(v.object({
-    _id: v.id("products"),
-    _creationTime: v.number(),
-    collectionId: v.id("collections"),
-    code: v.string(),
-    color: v.string(),
-  })),
+  returns: v.array(v.object(productFields)),
   handler: async (ctx, args) => {
     const searchTerm = args.query.toLowerCase().trim();
     
