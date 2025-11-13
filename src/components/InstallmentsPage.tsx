@@ -5,7 +5,13 @@ import { Id } from '../../convex/_generated/dataModel';
 import { useNavigate } from 'react-router-dom';
 import type { Dayjs } from 'dayjs';
 import { PersianDatePicker } from './PersianDatePicker';
-import { ensureJalaliDisplay, parseJalaliDate, gregorianToJalali } from '../utils/dateUtils';
+import { ensureJalaliDisplay, parseJalaliDate, gregorianToJalali, formatJalaliDateWithPersianNumbers } from '../utils/dateUtils';
+
+const formatRealPaymentDate = (timestamp?: number | null) => {
+  if (!timestamp) return '—';
+  const jalali = gregorianToJalali(new Date(timestamp));
+  return formatJalaliDateWithPersianNumbers(jalali.format('YYYY/MM/DD'));
+};
 
 export default function InstallmentsPage() {
   const navigate = useNavigate();
@@ -328,7 +334,8 @@ function InstallmentAgreementDetails({
         installmentId: selectedInstallment,
         paidBy: currentUser._id,
         paidAmount: paymentAmount,
-        paymentDate: paymentDate,
+        paymentDate,
+        paidAtTimestamp: paymentDateObj.toDate().getTime(),
         notes: paymentNotes || undefined,
       });
 
@@ -447,10 +454,9 @@ function InstallmentAgreementDetails({
           <thead>
             <tr className="border-b border-gray-600">
               <th className="text-right py-2 text-gray-300">شماره قسط</th>
-              <th className="text-right py-2 text-gray-300">تاریخ سررسید</th>
+              <th className="text-right py-2 text-gray-300">تاریخ سررسید برنامه‌ریزی‌شده</th>
+              <th className="text-right py-2 text-gray-300">تاریخ پرداخت واقعی</th>
               <th className="text-right py-2 text-gray-300">مبلغ قسط</th>
-              <th className="text-right py-2 text-gray-300">سود</th>
-              <th className="text-right py-2 text-gray-300">اصل</th>
               <th className="text-right py-2 text-gray-300">باقی‌مانده</th>
               <th className="text-right py-2 text-gray-300">وضعیت</th>
               <th className="text-right py-2 text-gray-300">عملیات</th>
@@ -461,9 +467,8 @@ function InstallmentAgreementDetails({
             <tr className="border-b border-gray-700 bg-blue-900/20">
               <td className="py-2 text-gray-200 font-medium">پیش‌پرداخت</td>
               <td className="py-2 text-gray-200">{agreement.agreementDate}</td>
+              <td className="py-2 text-gray-200">{ensureJalaliDisplay(agreement.agreementDate)}</td>
               <td className="py-2 text-gray-200 font-bold text-blue-400">{formatCurrency(agreement.downPayment)}</td>
-              <td className="py-2 text-gray-200">-</td>
-              <td className="py-2 text-gray-200">-</td>
               <td className="py-2 text-gray-200">-</td>
               <td className="py-2">
                 <span className="px-2 py-1 rounded text-xs bg-blue-600 text-white">
@@ -480,9 +485,12 @@ function InstallmentAgreementDetails({
               <tr key={installment._id} className="border-b border-gray-700">
                 <td className="py-2 text-gray-200">{installment.installmentNumber}</td>
                 <td className="py-2 text-gray-200">{ensureJalaliDisplay(installment.dueDate)}</td>
+                <td className="py-2 text-gray-200">
+                  {installment.status === 'پرداخت شده'
+                    ? formatRealPaymentDate(installment.paidAt)
+                    : '—'}
+                </td>
                 <td className="py-2 text-gray-200">{formatCurrency(installment.installmentAmount)}</td>
-                <td className="py-2 text-gray-200">{formatCurrency(installment.interestAmount)}</td>
-                <td className="py-2 text-gray-200">{formatCurrency(installment.principalAmount)}</td>
                 <td className="py-2 text-gray-200">{formatCurrency(installment.remainingBalance)}</td>
                 <td className="py-2">
                   <span className={`px-2 py-1 rounded text-xs ${

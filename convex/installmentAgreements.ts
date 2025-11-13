@@ -368,6 +368,7 @@ export const markInstallmentAsPaid = mutation({
     paidBy: v.id("users"),
     paidAmount: v.number(),
     paymentDate: v.string(), // Jalali date
+    paidAtTimestamp: v.optional(v.number()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -386,9 +387,10 @@ export const markInstallmentAsPaid = mutation({
     }
 
     const now = Date.now();
+    const paidAtValue = args.paidAtTimestamp ?? now;
     await ctx.db.patch(args.installmentId, {
       status: "پرداخت شده",
-      paidAt: now,
+      paidAt: paidAtValue,
       paidBy: args.paidBy,
       notes: args.notes,
     });
@@ -412,7 +414,7 @@ export const markInstallmentAsPaid = mutation({
 
     return { 
       success: true, 
-      paidAt: now,
+      paidAt: paidAtValue,
       paymentDate: args.paymentDate,
       paidAmount: args.paidAmount,
     };
