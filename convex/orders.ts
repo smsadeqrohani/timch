@@ -148,6 +148,40 @@ export const getWithItems = query({
   },
 });
 
+export const getItemsForOrders = query({
+  args: { orderIds: v.array(v.id("orders")) },
+  returns: v.array(
+    v.object({
+      orderId: v.id("orders"),
+      items: v.array(
+        v.object({
+          _id: v.id("orderItems"),
+          _creationTime: v.number(),
+          orderId: v.id("orders"),
+          productId: v.id("products"),
+          color: v.string(),
+          sizeX: v.number(),
+          sizeY: v.number(),
+          quantity: v.number(),
+        })
+      ),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const entries = await Promise.all(
+      args.orderIds.map(async (orderId) => {
+        const items = await ctx.db
+          .query("orderItems")
+          .withIndex("byOrderId", (q) => q.eq("orderId", orderId))
+          .collect();
+        return { orderId, items };
+      })
+    );
+
+    return entries;
+  },
+});
+
 // Create new order
 export const create = mutation({
   args: {

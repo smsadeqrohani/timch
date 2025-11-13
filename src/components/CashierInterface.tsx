@@ -3,6 +3,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { ORDER_STATUS, PAYMENT_TYPE } from '../../convex/orders';
+import ImageHoverPreview from './ImageHoverPreview';
 
 interface OrderWithDetails {
   _id: Id<"orders">;
@@ -43,6 +44,7 @@ export default function CashierInterface() {
   const pendingOrders = useQuery(api.orders.getPendingForCashier);
   const customers = useQuery(api.customers.list);
   const users = useQuery(api.auth.getAllUsers);
+  const products = useQuery(api.products.list);
   const currentUser = useQuery(api.auth.loggedInUser);
   const selectedOrderDetails = useQuery(
     api.orders.getWithItems, 
@@ -373,30 +375,51 @@ export default function CashierInterface() {
             <div className="border border-gray-600 rounded-lg p-6">
               <h3 className="text-xl font-semibold mb-4 text-gray-200">آیتم‌های سفارش</h3>
               <div className="space-y-3">
-                {selectedOrderDetails.items.map((item, index) => (
-                  <div key={item._id} className="flex items-center justify-between p-4 border border-gray-600 rounded-lg bg-gray-800/30">
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-200">آیتم {index + 1}</div>
-                      <div className="text-sm text-gray-400">محصول: {item.productId}</div>
-                    </div>
-                    <div className="flex items-center gap-6 text-sm">
-                      <div className="text-center">
-                        <div className="text-gray-500">ابعاد</div>
-                        <div className="font-medium text-gray-200">{item.sizeX} × {item.sizeY}</div>
+                {selectedOrderDetails.items.map((item, index) => {
+                  const product = products?.find((p) => p._id === item.productId);
+                  const previewImage = product?.imageUrls?.[0];
+                  return (
+                    <div key={item._id} className="flex items-center justify-between p-4 border border-gray-600 rounded-lg bg-gray-800/30">
+                      <div className="flex-1 space-y-2">
+                        <div className="font-medium text-gray-200">آیتم {index + 1}</div>
+                        <div className="text-sm text-gray-400">
+                          محصول: {product?.code || 'نامشخص'} • رنگ: {item.color}
+                        </div>
+                        {previewImage && (
+                          <ImageHoverPreview
+                            imageUrl={previewImage}
+                            alt={`پیش‌نمایش ${product?.code || ''} - ${item.color}`}
+                          >
+                            <span className="inline-flex items-center gap-2 rounded-md border border-blue-400/40 bg-blue-500/10 px-2 py-1 text-xs text-blue-200">
+                              مشاهده تصویر
+                              {product?.imageUrls && product.imageUrls.length > 1 && (
+                                <span className="text-[10px] text-blue-200/70">
+                                  {product.imageUrls.length}
+                                </span>
+                              )}
+                            </span>
+                          </ImageHoverPreview>
+                        )}
                       </div>
-                      <div className="text-center">
-                        <div className="text-gray-500">تعداد</div>
-                        <div className="font-medium text-gray-200">{item.quantity}</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-gray-500">مجموع</div>
-                        <div className="font-bold text-lg text-blue-400">
-                          {item.sizeX * item.sizeY * item.quantity}
+                      <div className="flex items-center gap-6 text-sm">
+                        <div className="text-center">
+                          <div className="text-gray-500">ابعاد</div>
+                          <div className="font-medium text-gray-200">{item.sizeX} × {item.sizeY}</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-gray-500">تعداد</div>
+                          <div className="font-medium text-gray-200">{item.quantity}</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-gray-500">مجموع</div>
+                          <div className="font-bold text-lg text-blue-400">
+                            {item.sizeX * item.sizeY * item.quantity}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

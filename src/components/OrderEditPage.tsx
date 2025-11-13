@@ -3,6 +3,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { useNavigate } from 'react-router-dom';
+import ImageHoverPreview from './ImageHoverPreview';
 
 interface OrderEditPageProps {
   orderId: Id<"orders">;
@@ -340,6 +341,7 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
             <div className="space-y-4">
               {editedItems.map((item, index) => {
                 const productDetails = getProductDetails(item.productId);
+                const previewImage = productDetails?.product.imageUrls?.[0];
                 return (
                   <div key={item._id} className="p-4 border border-gray-600 rounded-lg bg-gray-800/30">
                     <div className="flex justify-between items-center mb-3">
@@ -355,11 +357,28 @@ export default function OrderEditPage({ orderId }: OrderEditPageProps) {
                     
                     {/* Product Info Display */}
                     <div className="mb-3 p-3 bg-gray-700/50 rounded-lg">
-                      <div className="text-sm text-gray-400">
-                        شرکت: {productDetails?.company.name || 'نامشخص'} | 
-                        مجموعه: {productDetails?.collection.name || 'نامشخص'} | 
-                        محصول: {productDetails?.product.code || 'نامشخص'} | 
-                        رنگ: {item.color || 'نامشخص'}
+                      <div className="text-sm text-gray-400 space-y-2">
+                        <div>
+                          شرکت: {productDetails?.company.name || 'نامشخص'} | 
+                          مجموعه: {productDetails?.collection.name || 'نامشخص'} | 
+                          محصول: {productDetails?.product.code || 'نامشخص'} | 
+                          رنگ: {item.color || 'نامشخص'}
+                        </div>
+                        {previewImage && (
+                          <ImageHoverPreview
+                            imageUrl={previewImage}
+                            alt={`پیش‌نمایش ${productDetails?.product.code || ''} - ${item.color}`}
+                          >
+                            <span className="inline-flex items-center gap-1 rounded-md border border-blue-400/40 bg-blue-500/10 px-2 py-1 text-xs text-blue-200">
+                              مشاهده تصویر
+                              {productDetails?.product.imageUrls && productDetails.product.imageUrls.length > 1 && (
+                                <span className="text-[10px] text-blue-200/70">
+                                  {productDetails.product.imageUrls.length}
+                                </span>
+                              )}
+                            </span>
+                          </ImageHoverPreview>
+                        )}
                       </div>
                     </div>
                     

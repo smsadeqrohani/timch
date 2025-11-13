@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
+import ImageHoverPreview from './ImageHoverPreview';
 
 interface Product {
   _id: Id<"products">;
@@ -700,10 +701,12 @@ export default function CollectionView({ collectionId, collectionName }: Collect
                     const hasImages = product.imageUrls && product.imageUrls.length > 0;
                     const previewImage = hasImages ? product.imageUrls![0] : null;
                     return (
-                      <div key={product._id} className="relative group">
-                        <span
-                          className="bg-gray-700/50 text-white px-3 py-1 rounded-lg text-sm border border-gray-600/50 inline-flex items-center"
-                        >
+                      <ImageHoverPreview
+                        key={product._id}
+                        imageUrl={previewImage}
+                        alt={`پیش‌نمایش ${product.code} - ${product.color}`}
+                      >
+                        <span className="bg-gray-700/50 text-white px-3 py-1 rounded-lg text-sm border border-gray-600/50 inline-flex items-center">
                           {product.color}
                           {hasImages && (
                             <span className="ml-2 text-xs text-blue-200">
@@ -711,18 +714,7 @@ export default function CollectionView({ collectionId, collectionName }: Collect
                             </span>
                           )}
                         </span>
-                        {previewImage && (
-                          <div className="pointer-events-none absolute left-1/2 top-0 z-40 hidden -translate-x-1/2 -translate-y-full transform pb-3 group-hover:block">
-                            <div className="h-60 w-80 overflow-hidden rounded-lg border border-white/20 bg-gray-900/90 shadow-xl backdrop-blur-sm">
-                              <img
-                                src={previewImage}
-                                alt={`پیش‌نمایش ${product.code} - ${product.color}`}
-                                className="h-full w-full object-contain p-2"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                      </ImageHoverPreview>
                     );
                   })}
               </div>

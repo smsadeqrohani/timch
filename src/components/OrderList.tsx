@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { ORDER_STATUS } from '../../convex/orders';
 import { useNavigate } from 'react-router-dom';
 import { formatPrice, formatPersianNumber } from '../lib/utils';
+import ImageHoverPreview from './ImageHoverPreview';
 
 interface OrderWithDetails {
   _id: Id<"orders">;
@@ -48,6 +49,47 @@ export default function OrderList() {
   const orders = useQuery(api.orders.list);
   const customers = useQuery(api.customers.list);
   const users = useQuery(api.auth.getAllUsers);
+  const products = useQuery(api.products.list);
+
+  const orderIds = useMemo(
+    () => (orders ? orders.map((order) => order._id) : []),
+    [orders]
+  );
+
+  const orderItemsResponse = useQuery(
+    api.orders.getItemsForOrders,
+    orderIds.length > 0 ? { orderIds } : 'skip'
+  );
+
+  const itemsByOrderId = useMemo(() => {
+    const map = new Map<
+      Id<'orders'>,
+      Array<{
+        _id: Id<'orderItems'>;
+        productId: Id<'products'>;
+        color: string;
+        sizeX: number;
+        sizeY: number;
+        quantity: number;
+      }>
+    >();
+    if (orderItemsResponse) {
+      for (const { orderId, items } of orderItemsResponse) {
+        map.set(orderId, items);
+      }
+    }
+    return map;
+  }, [orderItemsResponse]);
+
+  const productById = useMemo(() => {
+    const map = new Map<Id<'products'>, any>();
+    if (products) {
+      for (const product of products) {
+        map.set(product._id as Id<'products'>, product as any);
+      }
+    }
+    return map;
+  }, [products]);
 
   // Get customer details for orders
   const ordersWithDetails: OrderWithDetails[] = (orders || []).map(order => {
@@ -154,10 +196,12 @@ export default function OrderList() {
               هیچ سفارشی یافت نشد
             </div>
           ) : (
-            filteredOrders.map((order) => (
-              <div key={order._id} className="border border-gray-600 rounded-lg p-4 hover:bg-gray-800/30 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 space-y-2">
+            filteredOrders.map((order) => {
+              const orderItems = itemsByOrderId.get(order._id) || [];
+              return (
+                <div key={order._id} className="border border-gray-600 rounded-lg p-4 hover:bg-gray-800/30 transition-colors space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-4">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
                         {order.status}
@@ -207,8 +251,34 @@ export default function OrderList() {
                     </button>
                   </div>
                 </div>
-              </div>
-            ))
+                  {orderItems.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-700/60 pt-3">
+                      {orderItems.map((item) => {
+                        const product = productById.get(item.productId as Id<'products'>);
+                        const previewImage = product?.imageUrls?.[0];
+                        const label = `${product?.code || 'نامشخص'} • ${item.color}`;
+                        return (
+                          <ImageHoverPreview
+                            key={item._id}
+                            imageUrl={previewImage}
+                            alt={`پیش‌نمایش ${product?.code || ''} - ${item.color}`}
+                          >
+                            <span className="inline-flex items-center gap-2 rounded-lg border border-gray-600/60 bg-gray-700/30 px-3 py-1 text-xs text-gray-200">
+                              {label}
+                              {product?.imageUrls && product.imageUrls.length > 1 && (
+                                <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-[10px] text-blue-200">
+                                  {product.imageUrls.length}
+                                </span>
+                              )}
+                            </span>
+                          </ImageHoverPreview>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </div>

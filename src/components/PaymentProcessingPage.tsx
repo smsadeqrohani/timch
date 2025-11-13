@@ -6,6 +6,7 @@ import { ORDER_STATUS, PAYMENT_TYPE } from '../../convex/orders';
 import { useNavigate } from 'react-router-dom';
 import { formatPrice, formatPersianNumber } from '../lib/utils';
 import InstallmentAgreementForm from './InstallmentAgreementForm';
+import ImageHoverPreview from './ImageHoverPreview';
 
 interface PaymentProcessingPageProps {
   orderId: Id<"orders">;
@@ -279,6 +280,7 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
             <div className="space-y-4">
               {orderDetails.items.map((item, index) => {
                 const productDetails = getProductDetails(item.productId);
+                const previewImage = productDetails?.product.imageUrls?.[0];
                 return (
                   <div key={item._id} className="p-4 border border-gray-600 rounded-lg bg-gray-800/30">
                     <div className="flex justify-between items-center mb-3">
@@ -287,11 +289,28 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
                     
                     {/* Product Info Display */}
                     <div className="mb-3 p-3 bg-gray-700/50 rounded-lg">
-                      <div className="text-sm text-gray-400">
-                        شرکت: {productDetails?.company.name || 'نامشخص'} | 
-                        مجموعه: {productDetails?.collection.name || 'نامشخص'} | 
-                        محصول: {productDetails?.product.code || 'نامشخص'} | 
-                        رنگ: {item.color || 'نامشخص'}
+                      <div className="text-sm text-gray-400 space-y-2">
+                        <div>
+                          شرکت: {productDetails?.company.name || 'نامشخص'} | 
+                          مجموعه: {productDetails?.collection.name || 'نامشخص'} | 
+                          محصول: {productDetails?.product.code || 'نامشخص'} | 
+                          رنگ: {item.color || 'نامشخص'}
+                        </div>
+                        {previewImage && (
+                          <ImageHoverPreview
+                            imageUrl={previewImage}
+                            alt={`پیش‌نمایش ${productDetails?.product.code || ''} - ${item.color}`}
+                          >
+                            <span className="inline-flex items-center gap-1 rounded-md border border-blue-400/40 bg-blue-500/10 px-2 py-1 text-xs text-blue-200">
+                              مشاهده تصویر
+                              {productDetails?.product.imageUrls && productDetails.product.imageUrls.length > 1 && (
+                                <span className="text-[10px] text-blue-200/70">
+                                  {productDetails.product.imageUrls.length}
+                                </span>
+                              )}
+                            </span>
+                          </ImageHoverPreview>
+                        )}
                       </div>
                     </div>
                     
@@ -465,12 +484,32 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
                     {orderDetails.items.map((item, index) => {
                       const productDetails = getProductDetails(item.productId);
                       const itemTotal = (itemPrices[item._id] || 0) * item.quantity;
+                      const previewImage = productDetails?.product.imageUrls?.[0];
                       return (
-                        <div key={item._id} className="flex justify-between items-center p-2 bg-gray-700/30 rounded">
-                          <div className="text-sm text-gray-300">
-                            {productDetails?.company.name} - {productDetails?.collection.name} - {productDetails?.product.code}
+                        <div key={item._id} className="flex justify-between items-center gap-3 p-2 bg-gray-700/30 rounded">
+                          <div className="flex-1 text-sm text-gray-300 space-y-1">
+                            <div>
+                              {productDetails?.company.name} - {productDetails?.collection.name} - {productDetails?.product.code}
+                            </div>
+                            <div className="text-xs text-gray-400">رنگ: {item.color}</div>
+                            {previewImage && (
+                              <ImageHoverPreview
+                                imageUrl={previewImage}
+                                alt={`پیش‌نمایش ${productDetails?.product.code || ''} - ${item.color}`}
+                                containerClassName="mt-1"
+                              >
+                                <span className="inline-flex items-center gap-1 rounded-md border border-blue-400/40 bg-blue-500/10 px-2 py-1 text-xs text-blue-200">
+                                  مشاهده تصویر
+                                  {productDetails?.product.imageUrls && productDetails.product.imageUrls.length > 1 && (
+                                    <span className="text-[10px] text-blue-200/70">
+                                      {productDetails.product.imageUrls.length}
+                                    </span>
+                                  )}
+                                </span>
+                              </ImageHoverPreview>
+                            )}
                           </div>
-                          <div className="text-sm text-gray-200">
+                          <div className="text-sm text-gray-200 whitespace-nowrap">
                             {formatPersianNumber(item.quantity)} × {formatPrice(itemPrices[item._id] || 0)} = {formatPrice(itemTotal)}
                           </div>
                         </div>
