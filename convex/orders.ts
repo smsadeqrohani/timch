@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { formatJalaliDate } from "./dateUtils";
 
 // Order status constants
 export const ORDER_STATUS = {
@@ -244,6 +245,14 @@ export const createInstallmentAgreement = mutation({
       throw new Error("سفارش یافت نشد");
     }
 
+    const customer = await ctx.db.get(order.customerId);
+    if (!customer) {
+      throw new Error("مشتری مرتبط با سفارش یافت نشد");
+    }
+    if (!customer.nationalCode) {
+      throw new Error("برای ثبت قرارداد اقساط، کد ملی مشتری باید ثبت شده باشد");
+    }
+
     // Create the installment agreement directly
     const now = Date.now();
     
@@ -486,11 +495,3 @@ export const getPendingForCashier = query({
   },
 });
 
-// Helper function to format Jalali date
-function formatJalaliDate(date: Date): string {
-  // This is a simplified version - you might want to use a proper Jalali date library
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}/${month}/${day}`;
-}

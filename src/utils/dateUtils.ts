@@ -167,3 +167,36 @@ export const formatJalaliDateWithPersianNumbers = (dateString: string): string =
   
   return `${persianYear}/${persianMonth}/${persianDay}`;
 };
+
+/**
+ * Ensure a date string is displayed in Jalali format with Persian digits.
+ * Accepts both Gregorian (YYYY/MM/DD) and Jalali strings.
+ */
+export const ensureJalaliDisplay = (dateString: string): string => {
+  if (!dateString) return '';
+
+  const normalized = dateString.replace(/-/g, '/');
+  const parts = normalized.split('/');
+  if (parts.length !== 3) {
+    return formatJalaliDateWithPersianNumbers(normalized);
+  }
+
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+
+  if (isNaN(year) || isNaN(month) || isNaN(day)) {
+    return formatJalaliDateWithPersianNumbers(normalized);
+  }
+
+  // Detect Gregorian year and convert
+  if (year > 1600) {
+    const gregorianDate = dayjs(`${parts[0]}-${parts[1]}-${parts[2]}`);
+    if (gregorianDate.isValid()) {
+      const jalaliDate = gregorianDate.calendar('jalali');
+      return formatJalaliDateWithPersianNumbers(jalaliDate.format('YYYY/MM/DD'));
+    }
+  }
+
+  return formatJalaliDateWithPersianNumbers(normalized);
+};

@@ -3,6 +3,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { useNavigate } from 'react-router-dom';
+import { ensureJalaliDisplay } from '../utils/dateUtils';
 
 interface InstallmentManagementPageProps {
   agreementId: Id<"installmentAgreements">;
@@ -195,7 +196,7 @@ export default function InstallmentManagementPage({ agreementId }: InstallmentMa
                           قسط {installment.installmentNumber}
                         </div>
                         <div className="text-sm text-gray-400">
-                          سررسید: {installment.dueDate}
+                          سررسید: {ensureJalaliDisplay(installment.dueDate)}
                         </div>
                       </div>
                     </div>

@@ -4,6 +4,7 @@ import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { ORDER_STATUS, PAYMENT_TYPE } from '../../convex/orders';
 import { useNavigate } from 'react-router-dom';
+import { ensureJalaliDisplay } from '../utils/dateUtils';
 
 interface OrderDetailsPageProps {
   orderId: Id<"orders">;
@@ -353,7 +354,7 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                       {installmentAgreement.installments.map((installment) => (
                         <tr key={installment._id} className="border-b border-gray-700">
                           <td className="py-2 text-gray-200">{toPersianNumbers(installment.installmentNumber)}</td>
-                          <td className="py-2 text-gray-200">{installment.dueDate}</td>
+                          <td className="py-2 text-gray-200">{ensureJalaliDisplay(installment.dueDate)}</td>
                           <td className="py-2 text-gray-200">{toPersianNumbers(installment.installmentAmount.toLocaleString())}</td>
                           <td className="py-2 text-gray-200">{toPersianNumbers(installment.interestAmount.toLocaleString())}</td>
                           <td className="py-2 text-gray-200">{toPersianNumbers(installment.principalAmount.toLocaleString())}</td>

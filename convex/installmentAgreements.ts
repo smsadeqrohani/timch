@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { formatJalaliDate } from "./dateUtils";
 
 // Installment agreement status constants
 export const AGREEMENT_STATUS = {
@@ -418,11 +419,3 @@ export const markInstallmentAsPaid = mutation({
   },
 });
 
-// Helper function to format Jalali date
-function formatJalaliDate(date: Date): string {
-  // This is a simplified version - you might want to use a proper Jalali date library
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}/${month}/${day}`;
-}

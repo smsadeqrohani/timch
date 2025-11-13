@@ -163,14 +163,20 @@ export default function OrderFormPage() {
         nationalCode: newCustomer.nationalCode || undefined,
       });
 
-      // Find the created customer and select it
-      const createdCustomer = customers?.find(c => c._id === customerId);
-      if (createdCustomer) {
-        setSelectedCustomer(createdCustomer);
-        setShowNewCustomerForm(false);
-        setNewCustomer({ name: '', mobile: '', nationalCode: '' });
-        setCustomerSearch('');
-      }
+      // Find the created customer and select it (fallback to local data if query isn't updated yet)
+      const createdCustomer =
+        customers?.find((c) => c._id === customerId) ||
+        ({
+          _id: customerId,
+          name: newCustomer.name,
+          mobile: newCustomer.mobile,
+          nationalCode: newCustomer.nationalCode || undefined,
+        } as Customer);
+
+      setSelectedCustomer(createdCustomer);
+      setShowNewCustomerForm(false);
+      setNewCustomer({ name: '', mobile: '', nationalCode: '' });
+      setCustomerSearch('');
 
       setErrors({});
     } catch (error: any) {

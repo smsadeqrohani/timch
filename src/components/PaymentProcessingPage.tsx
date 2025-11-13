@@ -18,6 +18,7 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
   const [showNationalCodeDialog, setShowNationalCodeDialog] = useState(false);
   const [newNationalCode, setNewNationalCode] = useState('');
   const [pendingPaymentType, setPendingPaymentType] = useState<string>('');
+  const [nationalCodeOverride, setNationalCodeOverride] = useState<string | null>(null);
   const [showPaymentConfirmation, setShowPaymentConfirmation] = useState(false);
   const [selectedPaymentType, setSelectedPaymentType] = useState<string>('');
   const [showInstallmentForm, setShowInstallmentForm] = useState(false);
@@ -29,6 +30,13 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
   const companies = useQuery(api.companies.list);
   const orderDetails = useQuery(api.orders.getWithItems, { id: orderId });
   const customers = useQuery(api.customers.list);
+
+  const customer = React.useMemo(() => {
+    if (!orderDetails) return null;
+    return customers?.find((c) => c._id === orderDetails.order.customerId) || null;
+  }, [customers, orderDetails]);
+
+  const customerNationalCode = nationalCodeOverride ?? customer?.nationalCode ?? null;
 
   // Mutations
   const updateOrderStatus = useMutation(api.orders.updateStatus);
@@ -65,9 +73,24 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
   // Check if customer needs national code
   const needsNationalCode = React.useMemo(() => {
     if (!orderDetails) return false;
-    const customer = customers?.find(c => c._id === orderDetails.order.customerId);
-    return !customer?.nationalCode;
-  }, [orderDetails, customers]);
+    return !customerNationalCode;
+  }, [orderDetails, customerNationalCode]);
+
+  React.useEffect(() => {
+    if (nationalCodeOverride !== null && customer?.nationalCode) {
+      setNationalCodeOverride(null);
+    }
+  }, [customer, nationalCodeOverride]);
+
+  const continuePaymentFlow = (paymentType: string) => {
+    if (paymentType === PAYMENT_TYPE.INSTALLMENT) {
+      setShowInstallmentForm(true);
+      return;
+    }
+
+    setSelectedPaymentType(paymentType);
+    setShowPaymentConfirmation(true);
+  };
 
   // Handle national code update
   const handleUpdateNationalCode = async () => {
@@ -81,22 +104,29 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
       return;
     }
 
+    if (!customer) {
+      setErrors({ general: 'اطلاعات مشتری یافت نشد' });
+      return;
+    }
+
     try {
       await updateCustomer({
         id: orderDetails.order.customerId,
-        name: customers?.find(c => c._id === orderDetails.order.customerId)?.name || '',
-        mobile: customers?.find(c => c._id === orderDetails.order.customerId)?.mobile || '',
+        name: customer.name,
+        mobile: customer.mobile,
         nationalCode: newNationalCode,
       });
 
+      const paymentTypeToResume = pendingPaymentType;
+
+      setNationalCodeOverride(newNationalCode);
       setNewNationalCode('');
       setShowNationalCodeDialog(false);
+      setPendingPaymentType('');
       setErrors({});
-      
-      // Now proceed with the pending payment
-      if (pendingPaymentType) {
-        await processPayment(pendingPaymentType);
-        setPendingPaymentType('');
+
+      if (paymentTypeToResume) {
+        continuePaymentFlow(paymentTypeToResume);
       }
     } catch (error: any) {
       setErrors({ general: error.message || 'خطا در به‌روزرسانی کد ملی' });
@@ -115,15 +145,15 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
       return;
     }
 
-    // If installment payment, show installment form
-    if (paymentType === PAYMENT_TYPE.INSTALLMENT) {
-      setShowInstallmentForm(true);
+    if (needsNationalCode) {
+      setPendingPaymentType(paymentType);
+      setShowNationalCodeDialog(true);
+      setErrors({});
       return;
     }
 
-    // For cash payment, show confirmation dialog
-    setSelectedPaymentType(paymentType);
-    setShowPaymentConfirmation(true);
+    setErrors({});
+    continuePaymentFlow(paymentType);
   };
 
   // Handle payment confirmation
@@ -406,31 +436,26 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
                 {/* Customer Info */}
                 <div className="border border-gray-600 rounded-lg p-4 bg-gray-800/30">
                   <h4 className="text-lg font-semibold mb-3 text-gray-200">اطلاعات مشتری</h4>
-                  {(() => {
-                    const customer = customers?.find(c => c._id === orderDetails.order.customerId);
-                    return (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <span className="text-gray-400">نام:</span>
-                          <span className="text-gray-200 mr-2">{customer?.name || 'نامشخص'}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">موبایل:</span>
-                          <span className="text-gray-200 mr-2">{customer?.mobile || 'نامشخص'}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">کد ملی:</span>
-                          <span className="text-gray-200 mr-2">{customer?.nationalCode || 'ثبت نشده'}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">تاریخ سفارش:</span>
-                          <span className="text-gray-200 mr-2">
-                            {new Date(orderDetails.order.createdAt).toLocaleDateString('fa-IR')}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-gray-400">نام:</span>
+                      <span className="text-gray-200 mr-2">{customer?.name || 'نامشخص'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">موبایل:</span>
+                      <span className="text-gray-200 mr-2">{customer?.mobile || 'نامشخص'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">کد ملی:</span>
+                      <span className="text-gray-200 mr-2">{customerNationalCode || 'ثبت نشده'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">تاریخ سفارش:</span>
+                      <span className="text-gray-200 mr-2">
+                        {new Date(orderDetails.order.createdAt).toLocaleDateString('fa-IR')}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Order Items Summary */}

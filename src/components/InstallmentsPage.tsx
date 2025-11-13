@@ -4,6 +4,7 @@ import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { useNavigate } from 'react-router-dom';
 import { PersianDatePicker } from './PersianDatePicker';
+import { ensureJalaliDisplay } from '../utils/dateUtils';
 
 export default function InstallmentsPage() {
   const navigate = useNavigate();
@@ -433,7 +434,7 @@ function InstallmentAgreementDetails({
             {installments.map((installment) => (
               <tr key={installment._id} className="border-b border-gray-700">
                 <td className="py-2 text-gray-200">{installment.installmentNumber}</td>
-                <td className="py-2 text-gray-200">{installment.dueDate}</td>
+                <td className="py-2 text-gray-200">{ensureJalaliDisplay(installment.dueDate)}</td>
                 <td className="py-2 text-gray-200">{formatCurrency(installment.installmentAmount)}</td>
                 <td className="py-2 text-gray-200">{formatCurrency(installment.interestAmount)}</td>
                 <td className="py-2 text-gray-200">{formatCurrency(installment.principalAmount)}</td>

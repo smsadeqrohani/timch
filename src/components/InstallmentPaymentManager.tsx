@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
+import { ensureJalaliDisplay } from '../utils/dateUtils';
 
 interface InstallmentPaymentManagerProps {
   agreementId: Id<"installmentAgreements">;
@@ -139,7 +140,7 @@ export default function InstallmentPaymentManager({
                           قسط {installment.installmentNumber}
                         </div>
                         <div className="text-sm text-gray-400">
-                          سررسید: {installment.dueDate}
+                          سررسید: {ensureJalaliDisplay(installment.dueDate)}
                         </div>
                       </div>
                     </div>

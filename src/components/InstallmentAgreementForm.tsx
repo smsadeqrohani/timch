@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
@@ -26,13 +26,31 @@ export default function InstallmentAgreementForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCalculating, setIsCalculating] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isUpdatingNationalCode, setIsUpdatingNationalCode] = useState(false);
+  const [nationalCodeDraft, setNationalCodeDraft] = useState('');
 
   // Get default annual rate from settings
   const defaultAnnualRate = useQuery(api.settings.getDefaultAnnualRate);
   const currentUser = useQuery(api.auth.loggedInUser);
+  const orderDetails = useQuery(api.orders.getWithItems, { id: orderId });
+  const customer = useQuery(
+    api.customers.get,
+    orderDetails ? { id: orderDetails.order.customerId } : "skip"
+  );
 
   // Mutations
   const createInstallmentAgreement = useMutation(api.orders.createInstallmentAgreement);
+  const updateCustomer = useMutation(api.customers.update);
+
+  useEffect(() => {
+    if (customer?.nationalCode) {
+      setNationalCodeDraft(customer.nationalCode);
+      setErrors((prev) => {
+        const { nationalCode, ...rest } = prev;
+        return rest;
+      });
+    }
+  }, [customer?.nationalCode]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -112,6 +130,11 @@ export default function InstallmentAgreementForm({
       return;
     }
 
+    if (!customer?.nationalCode) {
+      setErrors({ general: 'کد ملی مشتری ثبت نشده است. لطفاً ابتدا کد ملی را ثبت کنید.' });
+      return;
+    }
+
     if (defaultAnnualRate === undefined) {
       setErrors({ general: 'در حال بارگذاری تنظیمات...' });
       return;
@@ -161,6 +184,51 @@ export default function InstallmentAgreementForm({
     totalAmount
   ]);
 
+  const handleSaveNationalCode = async () => {
+    if (!customer) {
+      setErrors({ nationalCode: 'اطلاعات مشتری یافت نشد' });
+      return;
+    }
+
+    const trimmed = nationalCodeDraft.trim();
+    if (!trimmed) {
+      setErrors({ nationalCode: 'کد ملی را وارد کنید' });
+      return;
+    }
+
+    if (!/^\d{10}$/.test(trimmed)) {
+      setErrors({ nationalCode: 'کد ملی باید ۱۰ رقم باشد' });
+      return;
+    }
+
+    setIsUpdatingNationalCode(true);
+    setErrors((prev) => {
+      const { nationalCode, general, ...rest } = prev;
+      return rest;
+    });
+
+    try {
+      await updateCustomer({
+        id: customer._id,
+        name: customer.name,
+        mobile: customer.mobile,
+        nationalCode: trimmed,
+      });
+    } catch (error: any) {
+      setErrors({ nationalCode: error.message || 'خطا در ذخیره کد ملی' });
+    } finally {
+      setIsUpdatingNationalCode(false);
+    }
+  };
+
+  if (!orderDetails) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-t-transparent border-blue-400"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div className="glass-card p-6 rounded-2xl shadow-xl">
@@ -173,6 +241,53 @@ export default function InstallmentAgreementForm({
         )}
 
         <div className="space-y-6">
+          {/* Customer National Code Requirement */}
+          <div className="p-4 bg-purple-900/20 border border-purple-500/30 rounded-lg space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-purple-300">اطلاعات مشتری</h3>
+                <p className="text-sm text-purple-200/80">
+                  برای ثبت قرارداد اقساط، کد ملی مشتری باید ثبت شده باشد.
+                </p>
+              </div>
+              <div className="text-sm text-gray-200 bg-gray-800/40 rounded-lg p-3 min-w-[200px]">
+                <div>مشتری: {customer?.name || 'نامشخص'}</div>
+                <div>شماره موبایل: {customer?.mobile || 'نامشخص'}</div>
+                <div>
+                  کد ملی: {customer?.nationalCode || <span className="text-orange-400">ثبت نشده</span>}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-[2fr,1fr] gap-4 items-end">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  کد ملی مشتری
+                </label>
+                <input
+                  type="text"
+                  value={nationalCodeDraft}
+                  onChange={(e) => setNationalCodeDraft(e.target.value)}
+                  placeholder="1234567890"
+                  className={`auth-input-field ${errors.nationalCode ? 'border-red-500' : ''}`}
+                  dir="ltr"
+                  maxLength={10}
+                />
+                {errors.nationalCode && (
+                  <p className="mt-1 text-sm text-red-400">{errors.nationalCode}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveNationalCode}
+                className="auth-button h-12"
+                disabled={isUpdatingNationalCode || nationalCodeDraft.trim().length === 0}
+              >
+                {isUpdatingNationalCode ? 'در حال ذخیره...' : 'ثبت/به‌روزرسانی کد ملی'}
+              </button>
+            </div>
+          </div>
+
           {/* Order Summary */}
           <div className="p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
             <h3 className="text-lg font-semibold text-blue-400 mb-2">خلاصه سفارش</h3>
@@ -310,7 +425,7 @@ export default function InstallmentAgreementForm({
             </button>
             <button
               onClick={handleSubmit}
-              disabled={isCalculating || !calculation}
+              disabled={isCalculating || !calculation || !customer?.nationalCode}
               className="auth-button px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isCalculating ? 'در حال ایجاد...' : 'ایجاد قرارداد اقساط'}
@@ -394,7 +509,7 @@ export default function InstallmentAgreementForm({
                   </button>
                   <button
                     onClick={handleConfirmSubmit}
-                    disabled={isCalculating}
+                    disabled={isCalculating || !customer?.nationalCode}
                     className="auth-button px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isCalculating ? 'در حال ایجاد...' : 'بله، ایجاد قرارداد اقساط'}
