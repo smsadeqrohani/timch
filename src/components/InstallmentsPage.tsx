@@ -3,8 +3,9 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { useNavigate } from 'react-router-dom';
+import type { Dayjs } from 'dayjs';
 import { PersianDatePicker } from './PersianDatePicker';
-import { ensureJalaliDisplay } from '../utils/dateUtils';
+import { ensureJalaliDisplay, parseJalaliDate, gregorianToJalali } from '../utils/dateUtils';
 
 export default function InstallmentsPage() {
   const navigate = useNavigate();
@@ -270,6 +271,50 @@ function InstallmentAgreementDetails({
 
     if (!paymentDate) {
       alert('لطفاً تاریخ پرداخت را وارد کنید');
+      return;
+    }
+
+    const installment = installments.find((i) => i._id === selectedInstallment);
+    if (!installment) {
+      alert('قسط انتخاب شده یافت نشد');
+      return;
+    }
+
+    const paymentDateObj = parseJalaliDate(paymentDate);
+    if (!paymentDateObj) {
+      alert('تاریخ پرداخت نامعتبر است');
+      return;
+    }
+
+    let latestReference: Dayjs | null = null;
+
+    if (agreement.agreementDate) {
+      const agreementDateObj = parseJalaliDate(agreement.agreementDate);
+      if (agreementDateObj) {
+        latestReference = agreementDateObj;
+      }
+    }
+
+    const previousInstallments = installments.filter(
+      (i) => i.installmentNumber < installment.installmentNumber,
+    );
+
+    for (const prev of previousInstallments) {
+      let candidate: Dayjs | null = null;
+
+      if (prev.status === 'پرداخت شده' && prev.paidAt) {
+        candidate = gregorianToJalali(new Date(prev.paidAt));
+      } else if (prev.dueDate) {
+        candidate = parseJalaliDate(prev.dueDate);
+      }
+
+      if (candidate && (!latestReference || candidate.isAfter(latestReference))) {
+        latestReference = candidate;
+      }
+    }
+
+    if (latestReference && paymentDateObj.isBefore(latestReference)) {
+      alert('تاریخ پرداخت نمی‌تواند قبل از تاریخ قرارداد یا اقساط پرداخت/سررسید شده قبلی باشد');
       return;
     }
 
