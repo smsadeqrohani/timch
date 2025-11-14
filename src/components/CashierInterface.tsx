@@ -4,6 +4,7 @@ import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { ORDER_STATUS, PAYMENT_TYPE } from '../../convex/orders';
 import ImageHoverPreview from './ImageHoverPreview';
+import { formatSizeFromValues } from '../utils/sizeUtils';
 
 interface OrderWithDetails {
   _id: Id<"orders">;
@@ -404,7 +405,9 @@ export default function CashierInterface() {
                       <div className="flex items-center gap-6 text-sm">
                         <div className="text-center">
                           <div className="text-gray-500">ابعاد</div>
-                          <div className="font-medium text-gray-200">{item.sizeX} × {item.sizeY}</div>
+                          <div className="font-medium text-gray-200">
+                            {formatSizeFromValues(item.sizeX, item.sizeY)}
+                          </div>
                         </div>
                         <div className="text-center">
                           <div className="text-gray-500">تعداد</div>

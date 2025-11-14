@@ -5,6 +5,7 @@ import { Id } from '../../convex/_generated/dataModel';
 import { ORDER_STATUS, PAYMENT_TYPE } from '../../convex/orders';
 import { useNavigate } from 'react-router-dom';
 import { formatPrice, formatPersianNumber } from '../lib/utils';
+import { formatSizeFromValues } from '../utils/sizeUtils';
 import InstallmentAgreementForm from './InstallmentAgreementForm';
 import ImageHoverPreview from './ImageHoverPreview';
 
@@ -321,7 +322,7 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
                           ابعاد
                         </label>
                         <div className="auth-input-field bg-gray-700 text-gray-400 cursor-not-allowed">
-                          {formatPersianNumber(item.sizeX)} × {formatPersianNumber(item.sizeY)}
+                          {formatSizeFromValues(item.sizeX, item.sizeY)}
                         </div>
                       </div>
                       

@@ -6,6 +6,7 @@ import { ORDER_STATUS, PAYMENT_TYPE } from '../../convex/orders';
 import { useNavigate } from 'react-router-dom';
 import { ensureJalaliDisplay } from '../utils/dateUtils';
 import ImageHoverPreview from './ImageHoverPreview';
+import { findSizeByDimensions, formatSizeFromValues } from '../utils/sizeUtils';
 
 interface OrderDetailsPageProps {
   orderId: Id<"orders">;
@@ -24,6 +25,7 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
   const products = useQuery(api.products.list);
   const collections = useQuery(api.collections.list);
   const companies = useQuery(api.companies.list);
+  const sizes = useQuery(api.sizes.list);
   const orderDetails = useQuery(api.orders.getWithItems, { id: orderId });
   const installmentAgreement = useQuery(api.installmentAgreements.getByOrderId, { orderId });
 
@@ -418,7 +420,16 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                     <div className="flex items-center gap-6 text-sm">
                       <div className="text-center">
                         <div className="text-gray-500">ابعاد</div>
-                        <div className="font-medium text-gray-200">{toPersianNumbers(item.sizeX)} × {toPersianNumbers(item.sizeY)}</div>
+                        <div className="font-medium text-gray-200">
+                          {(() => {
+                            const matchedSize = findSizeByDimensions(sizes, item.sizeX, item.sizeY);
+                            return formatSizeFromValues(
+                              item.sizeX,
+                              item.sizeY,
+                              matchedSize?.type ?? null,
+                            );
+                          })()}
+                        </div>
                       </div>
                       <div className="text-center">
                         <div className="text-gray-500">تعداد</div>

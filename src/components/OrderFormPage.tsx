@@ -4,6 +4,12 @@ import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { useNavigate } from 'react-router-dom';
 import ImageHoverPreview from './ImageHoverPreview';
+import {
+  RawSizeType,
+  formatSizeLabel,
+  formatSizeFromValues,
+  findSizeByDimensions,
+} from '../utils/sizeUtils';
 
 interface OrderItem {
   productId: Id<"products">;
@@ -19,9 +25,6 @@ interface OrderItem {
   productImageUrls?: string[];
 }
 
-type RawSizeType = 'mostatil' | 'morabba' | 'dayere' | 'gerd' | 'beyzi';
-type SizeType = 'mostatil' | 'morabba' | 'gerd' | 'beyzi';
-
 interface SizeDoc {
   _id: Id<'sizes'>;
   _creationTime: number;
@@ -29,44 +32,8 @@ interface SizeDoc {
   y: number;
   type: RawSizeType;
 }
-
-const typeLabels: Record<SizeType, string> = {
-  mostatil: 'مستطیل',
-  morabba: 'مربع',
-  gerd: 'گرد',
-  beyzi: 'بیضی',
-};
-
 const toPersianDigits = (value: string): string =>
   value.replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]).replace(/\./g, '٫');
-
-const formatDimension = (value: number) => {
-  const raw = value.toString().replace(/\.?0+$/, '');
-  return toPersianDigits(raw);
-};
-
-const normalizeSizeType = (type: RawSizeType): SizeType =>
-  type === 'dayere' ? 'gerd' : type;
-
-const getTypeLabel = (type: RawSizeType) => typeLabels[normalizeSizeType(type)];
-
-const formatSizeLabel = (size: SizeDoc) => {
-  const dimensions = `${formatDimension(size.y)}*${formatDimension(size.x)}`;
-  const normalizedType = normalizeSizeType(size.type);
-  if (normalizedType === 'mostatil' || normalizedType === 'morabba') {
-    return dimensions;
-  }
-  return `${dimensions} ${getTypeLabel(size.type)}`;
-};
-
-const findSizeByDimensions = (
-  sizes: SizeDoc[] | undefined,
-  x: number,
-  y: number,
-) =>
-  sizes?.find(
-    (size) => Math.abs(size.x - x) < 1e-6 && Math.abs(size.y - y) < 1e-6,
-  );
 
 const formatQuantity = (value: number) => toPersianDigits(value.toString());
 
@@ -663,9 +630,11 @@ export default function OrderFormPage() {
                             />
                           </div>
                           <span className="text-sm text-gray-400">
-                            {matchedSize
-                              ? formatSizeLabel(matchedSize)
-                              : `${formatDimension(item.sizeX)}*${formatDimension(item.sizeY)}`}
+                            {formatSizeFromValues(
+                              item.sizeX,
+                              item.sizeY,
+                              matchedSize?.type ?? null,
+                            )}
                           </span>
                           <button
                             type="button"
