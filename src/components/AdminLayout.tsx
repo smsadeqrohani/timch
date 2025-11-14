@@ -12,6 +12,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useUserRoles } from '../hooks/useUserRoles';
 import CatalogMain from './CatalogMain';
 import SizesPage from './SizesPage';
+import SmsPage from './SmsPage';
 import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
 import OrderFormPage from './OrderFormPage';
 import OrderEditPage from './OrderEditPage';
@@ -89,6 +90,12 @@ const menuItems: MenuItem[] = [
     permission: 'settings:view'
   },
   {
+    id: 'sms',
+    title: 'پیامک‌ها',
+    icon: '📨',
+    permission: 'sms:view'
+  },
+  {
     id: 'permission-setup',
     title: 'راه‌اندازی مجوزها',
     icon: '🔧',
@@ -115,6 +122,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
     if (path === '/users') return 'users';
     if (path === '/roles') return 'roles';
     if (path === '/settings') return 'settings';
+     if (path === '/sms') return 'sms';
     if (path === '/permission-setup') return 'permission-setup';
     return 'installment-calculator';
   };
@@ -372,6 +380,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
             } />
             <Route path="/settings" element={
               hasPermission('settings:view') ? <SettingsPage /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای مشاهده این بخش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/sms" element={
+              hasPermission('sms:view') ? <SmsPage /> : (
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center">
                     <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>

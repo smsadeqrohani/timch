@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { ORDER_STATUS, PAYMENT_TYPE } from '../../convex/orders';
@@ -43,6 +43,7 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
   // Mutations
   const updateOrderStatus = useMutation(api.orders.updateStatus);
   const updateCustomer = useMutation(api.customers.update);
+  const sendOrderSms = useAction(api.sms.sendEvent);
 
   // Get product details with company and collection info
   const getProductDetails = (productId: Id<"products">) => {
@@ -185,6 +186,17 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
         cashierId: currentUser._id,
         totalAmount: calculateTotalAmount,
       });
+
+      if (paymentType === PAYMENT_TYPE.CASH) {
+        try {
+          await sendOrderSms({
+            event: "payment_cash",
+            orderId,
+          });
+        } catch (smsError) {
+          console.error("Cash payment SMS failed", smsError);
+        }
+      }
 
       // Navigate back to orders list
       navigate('/orders');

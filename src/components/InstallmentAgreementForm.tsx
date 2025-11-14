@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { formatJalaliDate, getCurrentJalaliDate } from '../utils/dateUtils';
@@ -41,6 +41,7 @@ export default function InstallmentAgreementForm({
   // Mutations
   const createInstallmentAgreement = useMutation(api.orders.createInstallmentAgreement);
   const updateCustomer = useMutation(api.customers.update);
+  const sendOrderSms = useAction(api.sms.sendEvent);
 
   useEffect(() => {
     if (customer?.nationalCode) {
@@ -157,7 +158,7 @@ export default function InstallmentAgreementForm({
     setErrors({});
 
     try {
-      await createInstallmentAgreement({
+      const agreementId = await createInstallmentAgreement({
         orderId,
         totalAmount: totalAmount,
         downPayment: formData.downPayment,
@@ -167,6 +168,16 @@ export default function InstallmentAgreementForm({
         agreementDate: formData.agreementDate,
         createdBy: currentUser._id,
       });
+
+      try {
+        await sendOrderSms({
+          event: "payment_installment",
+          orderId,
+          agreementId,
+        });
+      } catch (smsError) {
+        console.error("Installment SMS failed", smsError);
+      }
 
       setShowConfirmation(false);
       onSuccess?.();

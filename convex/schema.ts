@@ -152,6 +152,30 @@ const applicationTables = {
     .index("byAgreementId", ["agreementId"])
     .index("byStatus", ["status"])
     .index("byDueDate", ["dueDate"]),
+
+  smsLogs: defineTable({
+    event: v.string(),
+    message: v.string(),
+    receptor: v.string(),
+    sender: v.string(),
+    status: v.string(), // success | failed
+    providerStatus: v.optional(v.number()),
+    providerStatusText: v.optional(v.string()),
+    providerMessageId: v.optional(v.string()),
+    cost: v.optional(v.number()),
+    orderId: v.optional(v.id("orders")),
+    orderCode: v.optional(v.string()),
+    customerId: v.optional(v.id("customers")),
+    customerName: v.optional(v.string()),
+    errorCode: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
+    metadata: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("byCreatedAt", ["createdAt"])
+    .index("byEvent", ["event"])
+    .index("byOrderId", ["orderId"])
+    .index("byCustomerId", ["customerId"]),
 };
 
 export default defineSchema({

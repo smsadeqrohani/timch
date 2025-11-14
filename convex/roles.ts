@@ -45,6 +45,8 @@ export const AVAILABLE_PERMISSIONS = [
   "products:view",
   "products:edit",
   "products:delete",
+  "sms:view",
+  "sms:send",
 ] as const;
 
 export type Permission = typeof AVAILABLE_PERMISSIONS[number];

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Doc, Id } from '../../convex/_generated/dataModel';
 import ImageHoverPreview from './ImageHoverPreview';
@@ -155,6 +155,7 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
   // Mutations
   const createCustomer = useMutation(api.customers.create);
   const createOrder = useMutation(api.orders.create);
+  const sendOrderSms = useAction(api.sms.sendEvent);
 
   useEffect(() => {
     setSelectedSizeId(null);
@@ -423,7 +424,7 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
     }
 
     try {
-      await createOrder({
+      const orderId = await createOrder({
         customerId: selectedCustomer._id,
         createdBy: currentUser._id,
         items: orderItems.map(({ productId, color, sizeX, sizeY, quantity }) => ({
@@ -435,6 +436,15 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
         })),
         notes: notes.trim() || undefined,
       });
+
+      try {
+        await sendOrderSms({
+          event: "order_created",
+          orderId,
+        });
+      } catch (smsError) {
+        console.error("Order SMS failed", smsError);
+      }
 
       // Reset form
       setSelectedCustomer(null);

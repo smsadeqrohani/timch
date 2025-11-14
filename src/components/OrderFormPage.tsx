@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { useNavigate } from 'react-router-dom';
@@ -80,6 +80,7 @@ export default function OrderFormPage() {
   // Mutations
   const createCustomer = useMutation(api.customers.create);
   const createOrder = useMutation(api.orders.create);
+  const sendOrderSms = useAction(api.sms.sendEvent);
 
   useEffect(() => {
     setSelectedSizeId(null);
@@ -241,7 +242,7 @@ export default function OrderFormPage() {
     }
 
     try {
-      await createOrder({
+      const orderId = await createOrder({
         customerId: selectedCustomer._id,
         createdBy: currentUser._id,
         items: orderItems.map((item) => ({
@@ -253,6 +254,15 @@ export default function OrderFormPage() {
         })),
         notes: notes.trim() || undefined,
       });
+
+      try {
+        await sendOrderSms({
+          event: "order_created",
+          orderId,
+        });
+      } catch (smsError) {
+        console.error("Order SMS failed", smsError);
+      }
 
       // Navigate back to orders list
       navigate('/orders');
