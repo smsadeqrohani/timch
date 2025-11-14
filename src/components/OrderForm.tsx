@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { Id } from '../../convex/_generated/dataModel';
+import { Doc, Id } from '../../convex/_generated/dataModel';
 import ImageHoverPreview from './ImageHoverPreview';
 
 interface OrderItem {
@@ -10,6 +10,8 @@ interface OrderItem {
   sizeX: number;
   sizeY: number;
   quantity: number;
+  companyName?: string;
+  collectionName?: string;
 }
 
 type RawSizeType = 'mostatil' | 'morabba' | 'dayere' | 'gerd' | 'beyzi';
@@ -43,8 +45,16 @@ const normalizeSizeType = (type: RawSizeType): SizeType =>
 
 const getTypeLabel = (type: RawSizeType) => typeLabels[normalizeSizeType(type)];
 
-const formatSizeLabel = (size: SizeDoc) =>
-  `${getTypeLabel(size.type)} ${formatDimension(size.x)}*${formatDimension(size.y)}`;
+const formatSizeLabel = (size: SizeDoc) => {
+  const formattedX = formatDimension(size.x);
+  const formattedY = formatDimension(size.y);
+
+  if (size.type === 'mostatil' || size.type === 'morabba') {
+    return `${formattedY}*${formattedX}`;
+  }
+
+  return `${getTypeLabel(size.type)} ${formattedX}*${formattedY}`;
+};
 
 const findSizeByDimensions = (
   sizes: SizeDoc[] | undefined,
@@ -95,8 +105,9 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
     mobile: '',
     nationalCode: ''
   });
-  const [selectedCompany, setSelectedCompany] = useState<Id<"companies"> | null>(null);
-  const [selectedCollection, setSelectedCollection] = useState<Id<"collections"> | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<Id<'companies'> | null>(null);
+  const [selectedCollection, setSelectedCollection] = useState<Id<'collections'> | null>(null);
+  const [selectedProductCode, setSelectedProductCode] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<Id<"products"> | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedSizeId, setSelectedSizeId] = useState<Id<'sizes'> | null>(null);
@@ -109,14 +120,72 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
   // Queries
   const customers = useQuery(api.customers.list);
   const companies = useQuery(api.companies.list);
-  const collections = useQuery(api.collections.getByCompanyId, 
-    selectedCompany ? { companyId: selectedCompany } : "skip"
-  );
-  const products = useQuery(api.products.getByCollectionId, 
-    selectedCollection ? { collectionId: selectedCollection } : "skip"
-  );
+  const collections = useQuery(api.collections.list);
+  const products = useQuery(api.products.list);
   const sizes = useQuery(api.sizes.list);
   const currentUser = useQuery(api.auth.loggedInUser);
+
+  const collectionMap = useMemo(() => {
+    const map: Record<string, Doc<'collections'>> = {};
+    collections?.forEach((collection) => {
+      map[collection._id] = collection;
+    });
+    return map;
+  }, [collections]);
+
+  const companyMap = useMemo(() => {
+    const map: Record<string, Doc<'companies'>> = {};
+    companies?.forEach((company) => {
+      map[company._id] = company;
+    });
+    return map;
+  }, [companies]);
+
+  const enrichedProducts = useMemo<ProductWithDetails[]>(() => {
+    if (!products) {
+      return [];
+    }
+
+    return products
+      .map((product) => {
+        const collection = collectionMap[product.collectionId];
+        const company = collection ? companyMap[collection.companyId] : undefined;
+
+        return {
+          ...product,
+          collection: collection
+            ? {
+                _id: collection._id,
+                name: collection.name,
+                companyId: collection.companyId,
+                company: company
+                  ? {
+                      _id: company._id,
+                      name: company.name,
+                    }
+                  : undefined,
+              }
+            : undefined,
+        };
+      })
+      .sort((a, b) => {
+        const companyA = a.collection?.company?.name ?? '';
+        const companyB = b.collection?.company?.name ?? '';
+        if (companyA !== companyB) {
+          return companyA.localeCompare(companyB);
+        }
+        const collectionA = a.collection?.name ?? '';
+        const collectionB = b.collection?.name ?? '';
+        if (collectionA !== collectionB) {
+          return collectionA.localeCompare(collectionB);
+        }
+        const codeComparison = a.code.localeCompare(b.code);
+        if (codeComparison !== 0) {
+          return codeComparison;
+        }
+        return a.color.localeCompare(b.color);
+      });
+  }, [products, collectionMap, companyMap]);
 
   // Mutations
   const createCustomer = useMutation(api.customers.create);
@@ -135,9 +204,89 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
 
   // Get product details for display
   const getProductDetails = (productId: Id<"products">): ProductWithDetails | null => {
-    if (!products) return null;
-    return products.find(p => p._id === productId) as ProductWithDetails || null;
+    return enrichedProducts.find((product) => product._id === productId) ?? null;
   };
+
+  const selectedProductDetails = useMemo(
+    () => (selectedProduct ? getProductDetails(selectedProduct) : null),
+    [selectedProduct, enrichedProducts],
+  );
+
+  const availableCollections = useMemo(() => {
+    if (!collections) return [];
+    if (!selectedCompany) return collections;
+    return collections.filter((collection) => collection.companyId === selectedCompany);
+  }, [collections, selectedCompany]);
+
+  const availableProducts = useMemo(() => {
+    if (!enrichedProducts) return [];
+    return enrichedProducts.filter((product) => {
+      if (selectedCompany && product.collection?.companyId !== selectedCompany) {
+        return false;
+      }
+      if (selectedCollection && product.collectionId !== selectedCollection) {
+        return false;
+      }
+      return true;
+    });
+  }, [enrichedProducts, selectedCompany, selectedCollection]);
+
+  const availableProductCodes = useMemo(() => {
+    const codes = new Set<string>();
+    const list: string[] = [];
+    availableProducts.forEach((product) => {
+      if (!codes.has(product.code)) {
+        codes.add(product.code);
+        list.push(product.code);
+      }
+    });
+    return list.sort((a, b) => a.localeCompare(b));
+  }, [availableProducts]);
+
+  const availableColors = useMemo(() => {
+    return availableProducts
+      .filter((product) => product.code === selectedProductCode)
+      .map((product) => ({
+        color: product.color,
+        productId: product._id,
+      }));
+  }, [availableProducts, selectedProductCode]);
+
+  const selectedCompanyDoc = useMemo(
+    () => (selectedCompany ? companyMap[selectedCompany] : undefined),
+    [selectedCompany, companyMap],
+  );
+
+  const selectedCollectionDoc = useMemo(
+    () => (selectedCollection ? collectionMap[selectedCollection] : undefined),
+    [selectedCollection, collectionMap],
+  );
+
+  const selectedProductCollectionDoc = useMemo(() => {
+    if (!selectedProductDetails) return undefined;
+    return collectionMap[selectedProductDetails.collectionId];
+  }, [selectedProductDetails, collectionMap]);
+
+  const displayCollectionName = useMemo(() => {
+    return (
+      selectedCollectionDoc?.name ??
+      selectedProductDetails?.collection?.name ??
+      selectedProductCollectionDoc?.name ??
+      undefined
+    );
+  }, [selectedCollectionDoc, selectedProductDetails, selectedProductCollectionDoc]);
+
+  const displayCompanyName = useMemo(() => {
+    const productCompanyId = selectedProductCollectionDoc?.companyId;
+    const companyByCollection = productCompanyId ? companyMap[productCompanyId] : undefined;
+
+    return (
+      selectedProductDetails?.collection?.company?.name ??
+      companyByCollection?.name ??
+      selectedCompanyDoc?.name ??
+      undefined
+    );
+  }, [selectedProductDetails, selectedProductCollectionDoc, selectedCompanyDoc, companyMap]);
 
 
   // Add new item to order
@@ -165,11 +314,31 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
       return;
     }
 
-    const existingItemIndex = orderItems.findIndex(item => 
-      item.productId === selectedProduct && 
-      item.color === selectedColor &&
-      item.sizeX === selectedSize.x && 
-      item.sizeY === selectedSize.y
+    const productDetails = getProductDetails(selectedProduct);
+    if (!productDetails) {
+      setErrors({ general: 'محصول انتخاب شده یافت نشد' });
+      return;
+    }
+    const productColor = productDetails.color;
+
+    const resolvedCompanyName =
+      selectedCompanyDoc?.name ??
+      selectedProductDetails?.collection?.company?.name ??
+      (selectedProductCollectionDoc
+        ? companyMap[selectedProductCollectionDoc.companyId]?.name
+        : undefined);
+
+    const resolvedCollectionName =
+      selectedCollectionDoc?.name ??
+      selectedProductDetails?.collection?.name ??
+      selectedProductCollectionDoc?.name;
+
+    const existingItemIndex = orderItems.findIndex(
+      (item) =>
+        item.productId === selectedProduct &&
+        item.color === productColor &&
+        item.sizeX === selectedSize.x &&
+        item.sizeY === selectedSize.y,
     );
     
     if (existingItemIndex >= 0) {
@@ -177,18 +346,32 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
       const newItems = [...orderItems];
       newItems[existingItemIndex] = {
         ...newItems[existingItemIndex],
-        quantity: newItems[existingItemIndex].quantity + itemQuantity
+        quantity: newItems[existingItemIndex].quantity + itemQuantity,
+        ...(resolvedCompanyName
+          ? { companyName: newItems[existingItemIndex].companyName ?? resolvedCompanyName }
+          : {}),
+        ...(resolvedCollectionName
+          ? {
+              collectionName:
+                newItems[existingItemIndex].collectionName ?? resolvedCollectionName,
+            }
+          : {}),
       };
       setOrderItems(newItems);
     } else {
       // Add new item
-      setOrderItems([...orderItems, {
-        productId: selectedProduct,
-        color: selectedColor,
-        sizeX: selectedSize.x,
-        sizeY: selectedSize.y,
-        quantity: itemQuantity
-      }]);
+      setOrderItems([
+        ...orderItems,
+        {
+          productId: selectedProduct,
+          color: productColor,
+          sizeX: selectedSize.x,
+          sizeY: selectedSize.y,
+          quantity: itemQuantity,
+          ...(resolvedCompanyName ? { companyName: resolvedCompanyName } : {}),
+          ...(resolvedCollectionName ? { collectionName: resolvedCollectionName } : {}),
+        },
+      ]);
     }
 
     setSelectedSizeId(null);
@@ -278,7 +461,13 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
       await createOrder({
         customerId: selectedCustomer._id,
         createdBy: currentUser._id,
-        items: orderItems,
+        items: orderItems.map(({ productId, color, sizeX, sizeY, quantity }) => ({
+          productId,
+          color,
+          sizeX,
+          sizeY,
+          quantity,
+        })),
         notes: notes.trim() || undefined,
       });
 
@@ -289,6 +478,7 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
       setNotes('');
       setSelectedCompany(null);
       setSelectedCollection(null);
+      setSelectedProductCode('');
       setSelectedProduct(null);
       setSelectedColor('');
       setErrors({});
@@ -439,152 +629,187 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
             )}
           </div>
 
-          {/* Product Selection */}
+          {/* Product Selection - All fields in one card */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-200">انتخاب محصول</h3>
-            {/* Row 1: Company + Collection */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">شرکت</label>
-                <select
-                  value={selectedCompany || ""}
-                  onChange={(e) => {
-                    setSelectedCompany(e.target.value as Id<"companies">);
-                    setSelectedCollection(null);
-                    setSelectedProduct(null);
-                    setSelectedColor('');
-                  }}
-                  className="auth-input-field"
-                >
-                  <option value="">انتخاب شرکت</option>
-                  {companies?.map((company) => (
-                    <option key={company._id} value={company._id}>
-                      {company.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">مجموعه</label>
-                <select
-                  value={selectedCollection || ""}
-                  onChange={(e) => {
-                    setSelectedCollection(e.target.value as Id<"collections">);
-                    setSelectedProduct(null);
-                    setSelectedColor('');
-                  }}
-                  disabled={!selectedCompany}
-                  className="auth-input-field"
-                >
-                  <option value="">انتخاب مجموعه</option>
-                  {collections?.map((collection) => (
-                    <option key={collection._id} value={collection._id}>
-                      {collection.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Row 2: Product + Color */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">محصول</label>
-                <select
-                  value={selectedProduct || ""}
-                  onChange={(e) => setSelectedProduct(e.target.value as Id<"products">)}
-                  disabled={!selectedCollection}
-                  className="auth-input-field"
-                >
-                  <option value="">انتخاب محصول</option>
-                  {products?.filter(product => product.collectionId === selectedCollection).map((product) => (
-                    <option key={product._id} value={product._id}>
-                      {toPersianDigits(product.code)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="border border-gray-600 rounded-2xl bg-gray-800/30 p-6 space-y-6">
+              <h3 className="text-lg font-semibold text-gray-200 mb-4">افزودن آیتم به سفارش</h3>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">رنگ</label>
-                <select
-                  value={selectedColor}
-                  onChange={(e) => setSelectedColor(e.target.value)}
-                  disabled={!selectedProduct}
-                  className="auth-input-field"
-                >
-                  <option value="">انتخاب رنگ</option>
-                  {selectedProduct && products?.filter(p => 
-                    p.collectionId === selectedCollection && 
-                    p.code === products.find(prod => prod._id === selectedProduct)?.code
-                  ).map((product) => (
-                    <option key={product._id} value={product.color}>
-                        {formatColorLabel(product.color)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {selectedProduct && selectedColor && (
-              <div className="border border-gray-600 rounded-lg p-4 bg-gray-800/30">
-                <h4 className="text-md font-semibold text-gray-200 mb-3">افزودن به سفارش</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-300 mb-2">سایز</label>
-                    <select
-                      value={selectedSizeId || ''}
-                      onChange={(event) =>
-                        setSelectedSizeId(
-                          event.target.value
-                            ? (event.target.value as Id<'sizes'>)
-                            : null,
-                        )
-                      }
-                      className="auth-input-field"
-                      disabled={!sizes || sizes.length === 0}
-                    >
-                      <option value="">
-                        {sizes && sizes.length > 0
-                          ? 'انتخاب سایز'
-                          : 'ابتدا سایز تعریف کنید'}
+              {/* All selection fields in one grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">شرکت</label>
+                  <select
+                    value={selectedCompany || ''}
+                    onChange={(event) => {
+                      const value = event.target.value as Id<'companies'>;
+                      setSelectedCompany(event.target.value ? value : null);
+                      setSelectedCollection(null);
+                      setSelectedProductCode('');
+                      setSelectedProduct(null);
+                      setSelectedColor('');
+                    }}
+                    className="auth-input-field"
+                  >
+                    <option value="">انتخاب شرکت</option>
+                    {companies?.map((company) => (
+                      <option key={company._id} value={company._id}>
+                        {company.name}
                       </option>
-                      {sizes?.map((size) => (
-                        <option key={size._id} value={size._id}>
-                          {formatSizeLabel(size)}
-                        </option>
-                      ))}
-                    </select>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">مجموعه</label>
+                  <select
+                    value={selectedCollection || ''}
+                    onChange={(event) => {
+                      const value = event.target.value as Id<'collections'>;
+                      setSelectedCollection(event.target.value ? value : null);
+                      setSelectedProductCode('');
+                      setSelectedProduct(null);
+                      setSelectedColor('');
+                    }}
+                    className="auth-input-field"
+                    disabled={!selectedCompany}
+                  >
+                    <option value="">انتخاب مجموعه</option>
+                    {availableCollections.map((collection) => (
+                      <option key={collection._id} value={collection._id}>
+                        {collection.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">محصول</label>
+                  <select
+                    value={selectedProductCode}
+                    onChange={(event) => {
+                      const code = event.target.value;
+                      setSelectedProductCode(code);
+                      const firstMatch = availableProducts.find((product) => product.code === code);
+                      if (firstMatch) {
+                        setSelectedProduct(firstMatch._id);
+                        setSelectedColor(firstMatch.color);
+                      } else {
+                        setSelectedProduct(null);
+                        setSelectedColor('');
+                      }
+                    }}
+                    className="auth-input-field"
+                    disabled={!selectedCollection || availableProductCodes.length === 0}
+                  >
+                    <option value="">
+                      {availableProductCodes.length > 0 ? 'انتخاب محصول' : 'ابتدا محصول ثبت کنید'}
+                    </option>
+                    {availableProductCodes.map((code) => (
+                      <option key={code} value={code}>
+                        {toPersianDigits(code)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">رنگ</label>
+                  <select
+                    value={selectedColor}
+                    onChange={(event) => {
+                      const color = event.target.value;
+                      setSelectedColor(color);
+                      const match = availableColors.find((option) => option.color === color);
+                      setSelectedProduct(match ? match.productId : null);
+                    }}
+                    className="auth-input-field"
+                    disabled={!selectedProductCode}
+                  >
+                    <option value="">انتخاب رنگ</option>
+                    {availableColors.map((option) => (
+                      <option key={option.productId} value={option.color}>
+                        {formatColorLabel(option.color)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">سایز</label>
+                  <select
+                    value={selectedSizeId || ''}
+                    onChange={(event) =>
+                      setSelectedSizeId(
+                        event.target.value
+                          ? (event.target.value as Id<'sizes'>)
+                          : null,
+                      )
+                    }
+                    className="auth-input-field"
+                    disabled={!sizes || sizes.length === 0}
+                  >
+                    <option value="">
+                      {sizes && sizes.length > 0
+                        ? 'انتخاب سایز'
+                        : 'ابتدا سایز تعریف کنید'}
+                    </option>
+                    {sizes?.map((size) => (
+                      <option key={size._id} value={size._id}>
+                        {formatSizeLabel(size)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">تعداد</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={itemQuantity}
+                    onChange={(event) =>
+                      setItemQuantity(Math.max(1, parseInt(event.target.value) || 1))
+                    }
+                    className="auth-input-field"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+
+              {/* Product summary display */}
+              {selectedProductDetails && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-600">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">کد / رنگ</label>
+                    <div className="rounded-lg border border-gray-600 bg-gray-900/40 p-3 text-gray-100">
+                      {toPersianDigits(selectedProductDetails.code)} | {formatColorLabel(selectedProductDetails.color)}
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">تعداد</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={itemQuantity}
-                      onChange={(event) =>
-                        setItemQuantity(Math.max(1, parseInt(event.target.value) || 1))
-                      }
-                      className="auth-input-field"
-                      dir="ltr"
-                    />
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      شرکت / مجموعه
+                    </label>
+                    <div className="rounded-lg border border-gray-600 bg-gray-900/40 p-3 text-gray-100">
+                      {(displayCompanyName ?? 'نامشخص')} | {(displayCollectionName ?? 'نامشخص')}
+                    </div>
                   </div>
                 </div>
-                <button
-                  onClick={addOrderItem}
-                  disabled={
-                    !selectedProduct ||
-                    !selectedColor ||
-                    !selectedSizeId ||
-                    itemQuantity <= 0
-                  }
-                  className="auth-button w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  + افزودن به سفارش
-                </button>
-              </div>
-            )}
+              )}
+
+              {/* Add button */}
+              <button
+                onClick={addOrderItem}
+                disabled={
+                  !selectedProduct ||
+                  !selectedColor ||
+                  !selectedSizeId ||
+                  itemQuantity <= 0
+                }
+                className="auth-button w-full disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+              >
+                + افزودن به سفارش
+              </button>
+            </div>
           </div>
 
           {/* Order Items */}
@@ -596,13 +821,28 @@ export default function OrderForm({ onSuccess }: OrderFormProps = {}) {
                   const product = getProductDetails(item.productId);
                   const previewImage = product?.imageUrls?.[0];
                   const matchedSize = findSizeByDimensions(sizes, item.sizeX, item.sizeY);
+                  const productCollectionDoc = product
+                    ? collectionMap[product.collectionId]
+                    : undefined;
+                  const productCompanyName =
+                    item.companyName ??
+                    product?.collection?.company?.name ??
+                    (productCollectionDoc
+                      ? companyMap[productCollectionDoc.companyId]?.name
+                      : undefined) ??
+                    'نامشخص';
+                  const productCollectionName =
+                    item.collectionName ??
+                    product?.collection?.name ??
+                    productCollectionDoc?.name ??
+                    'نامشخص';
                   return (
                     <div key={index} className="p-4 border border-gray-600 rounded-lg bg-gray-800/30">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="text-sm text-gray-400 space-y-1">
-                            <div>شرکت: {product?.collection?.company?.name || 'نامشخص'}</div>
-                            <div>مجموعه: {product?.collection?.name || 'نامشخص'}</div>
+                            <div>شرکت: {productCompanyName}</div>
+                            <div>مجموعه: {productCollectionName}</div>
                             <div>
                               محصول:{' '}
                               {product?.code ? toPersianDigits(product.code) : 'نامشخص'}

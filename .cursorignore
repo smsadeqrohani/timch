@@ -1,0 +1,49 @@
+# --- Node ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Environment Variables ---
+.env
+.env.*
+!.env.example
+
+# --- Build Outputs ---
+dist/
+build/
+out/
+.next/
+.vercel/
+
+# --- Convex Generated Files ---
+# The convex directory itself contains your server functions, so DO NOT ignore the whole folder.
+convex/.deploy/
+convex/.shadow/
+convex/node_modules/
+
+# Optional: ignore convex-generated API if you want
+# convex/_generated/
+# convex/_generated/server/
+# convex/_generated/client/
+
+# --- Editor / Tooling ---
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# --- Logs ---
+logs/
+*.log
+
+# --- Testing ---
+coverage/
+*.test.js.snap
+*.spec.js.snap
+
+# --- Local dev artifacts ---
+tmp/
+temp/

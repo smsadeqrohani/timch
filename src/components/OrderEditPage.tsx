@@ -40,8 +40,16 @@ const normalizeSizeType = (type: RawSizeType): SizeType =>
 
 const getTypeLabel = (type: RawSizeType) => typeLabels[normalizeSizeType(type)];
 
-const formatSizeLabel = (size: SizeDoc) =>
-  `${getTypeLabel(size.type)} ${formatDimension(size.x)}*${formatDimension(size.y)}`;
+const formatSizeLabel = (size: SizeDoc) => {
+  const formattedX = formatDimension(size.x);
+  const formattedY = formatDimension(size.y);
+
+  if (size.type === 'mostatil' || size.type === 'morabba') {
+    return `${formattedY}*${formattedX}`;
+  }
+
+  return `${getTypeLabel(size.type)} ${formattedX}*${formattedY}`;
+};
 
 const findSizeByDimensions = (
   sizes: SizeDoc[] | undefined,

@@ -11,6 +11,12 @@ interface OrderItem {
   sizeX: number;
   sizeY: number;
   quantity: number;
+  companyId: Id<"companies">;
+  companyName: string;
+  collectionId: Id<"collections">;
+  collectionName: string;
+  productCode: string;
+  productImageUrls?: string[];
 }
 
 type RawSizeType = 'mostatil' | 'morabba' | 'dayere' | 'gerd' | 'beyzi';
@@ -44,8 +50,14 @@ const normalizeSizeType = (type: RawSizeType): SizeType =>
 
 const getTypeLabel = (type: RawSizeType) => typeLabels[normalizeSizeType(type)];
 
-const formatSizeLabel = (size: SizeDoc) =>
-  `${getTypeLabel(size.type)} ${formatDimension(size.x)}*${formatDimension(size.y)}`;
+const formatSizeLabel = (size: SizeDoc) => {
+  const dimensions = `${formatDimension(size.y)}*${formatDimension(size.x)}`;
+  const normalizedType = normalizeSizeType(size.type);
+  if (normalizedType === 'mostatil' || normalizedType === 'morabba') {
+    return dimensions;
+  }
+  return `${dimensions} ${getTypeLabel(size.type)}`;
+};
 
 const findSizeByDimensions = (
   sizes: SizeDoc[] | undefined,
@@ -59,23 +71,6 @@ const findSizeByDimensions = (
 const formatQuantity = (value: number) => toPersianDigits(value.toString());
 
 const formatColorLabel = (color: string) => toPersianDigits(color);
-interface ProductWithDetails {
-  _id: Id<"products">;
-  code: string;
-  color: string;
-  collectionId: Id<"collections">;
-  imageUrls?: string[];
-  collection?: {
-    _id: Id<"collections">;
-    name: string;
-    companyId: Id<"companies">;
-    company?: {
-      _id: Id<"companies">;
-      name: string;
-    };
-  };
-}
-
 interface Customer {
   _id: Id<"customers">;
   name: string;
@@ -130,16 +125,10 @@ export default function OrderFormPage() {
     customer.mobile.includes(customerSearch)
   ) || [];
 
-  // Get product details for display
-  const getProductDetails = (productId: Id<"products">): ProductWithDetails | null => {
-    if (!products) return null;
-    return products.find(p => p._id === productId) as ProductWithDetails || null;
-  };
-
   // Add new item to order
   const addOrderItem = () => {
-    if (!selectedProduct || !selectedColor) {
-      setErrors({ general: 'لطفاً محصول و رنگ را انتخاب کنید' });
+    if (!selectedCompany || !selectedCollection || !selectedProduct || !selectedColor) {
+      setErrors({ general: 'لطفاً شرکت، مجموعه، محصول و رنگ را انتخاب کنید' });
       return;
     }
     if (!sizes || sizes.length === 0) {
@@ -158,6 +147,15 @@ export default function OrderFormPage() {
     const selectedSize = sizes.find((size) => size._id === selectedSizeId);
     if (!selectedSize) {
       setErrors({ general: 'سایز انتخاب شده یافت نشد' });
+      return;
+    }
+
+    const company = companies?.find((c) => c._id === selectedCompany);
+    const collection = collections?.find((col) => col._id === selectedCollection);
+    const product = products?.find((p) => p._id === selectedProduct);
+
+    if (!company || !collection || !product) {
+      setErrors({ general: 'اطلاعات محصول/مجموعه/شرکت یافت نشد' });
       return;
     }
 
@@ -183,7 +181,13 @@ export default function OrderFormPage() {
         color: selectedColor,
         sizeX: selectedSize.x,
         sizeY: selectedSize.y,
-        quantity: itemQuantity
+        quantity: itemQuantity,
+        companyId: selectedCompany,
+        companyName: company.name,
+        collectionId: selectedCollection,
+        collectionName: collection.name,
+        productCode: product.code,
+        productImageUrls: product.imageUrls,
       }]);
     }
 
@@ -273,7 +277,13 @@ export default function OrderFormPage() {
       await createOrder({
         customerId: selectedCustomer._id,
         createdBy: currentUser._id,
-        items: orderItems,
+        items: orderItems.map((item) => ({
+          productId: item.productId,
+          color: item.color,
+          sizeX: item.sizeX,
+          sizeY: item.sizeY,
+          quantity: item.quantity,
+        })),
         notes: notes.trim() || undefined,
       });
 
@@ -536,8 +546,9 @@ export default function OrderFormPage() {
                         event.target.value ? (event.target.value as Id<'sizes'>) : null,
                       )
                     }
-                    className="auth-input-field"
+                    className="auth-input-field text-right"
                     disabled={!sizes || sizes.length === 0}
+                    dir="rtl"
                   >
                     <option value="">
                       {sizes && sizes.length > 0
@@ -587,32 +598,31 @@ export default function OrderFormPage() {
               <h3 className="text-lg font-semibold text-gray-200">آیتم‌های سفارش</h3>
               <div className="space-y-2">
                 {orderItems.map((item, index) => {
-                  const product = getProductDetails(item.productId);
-                  const previewImage = product?.imageUrls?.[0];
+                  const previewImage = item.productImageUrls?.[0];
                   const matchedSize = findSizeByDimensions(sizes, item.sizeX, item.sizeY);
                   return (
                     <div key={index} className="p-4 border border-gray-600 rounded-lg bg-gray-800/30">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="text-sm text-gray-400 space-y-1">
-                            <div>شرکت: {product?.collection?.company?.name || 'نامشخص'}</div>
-                            <div>مجموعه: {product?.collection?.name || 'نامشخص'}</div>
+                            <div>شرکت: {item.companyName || 'نامشخص'}</div>
+                            <div>مجموعه: {item.collectionName || 'نامشخص'}</div>
                             <div>
                               محصول:{' '}
-                              {product?.code ? toPersianDigits(product.code) : 'نامشخص'}
+                              {item.productCode ? toPersianDigits(item.productCode) : 'نامشخص'}
                             </div>
                             <div className="flex items-center gap-2">
                               <span>رنگ: {item.color ? formatColorLabel(item.color) : 'نامشخص'}</span>
                               {previewImage && (
                                 <ImageHoverPreview
                                   imageUrl={previewImage}
-                                  alt={`پیش‌نمایش ${product?.code || ''} - ${item.color}`}
+                                  alt={`پیش‌نمایش ${item.productCode || ''} - ${item.color}`}
                                 >
                                   <span className="inline-flex items-center gap-1 rounded-md border border-blue-400/40 bg-blue-500/10 px-2 py-1 text-xs text-blue-200">
                                     مشاهده تصویر
-                                    {product?.imageUrls && product.imageUrls.length > 1 && (
+                                    {item.productImageUrls && item.productImageUrls.length > 1 && (
                                       <span className="text-[10px] text-blue-200/70">
-                                        {product.imageUrls.length}
+                                        {item.productImageUrls.length}
                                       </span>
                                     )}
                                   </span>
@@ -631,7 +641,8 @@ export default function OrderFormPage() {
                               onChange={(event) =>
                                 handleOrderItemSizeChange(index, event.target.value)
                               }
-                              className="h-8 w-40 px-2 bg-gray-700 border border-gray-600 rounded text-gray-200"
+                              className="h-8 w-40 px-2 bg-gray-700 border border-gray-600 rounded text-gray-200 text-right"
+                              dir="rtl"
                             >
                               <option value="">انتخاب سایز</option>
                               {sizes?.map((size) => (

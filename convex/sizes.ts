@@ -22,20 +22,27 @@ export const list = query({
   returns: v.array(v.object(sizeDocument)),
   handler: async (ctx) => {
     const sizes = await ctx.db.query("sizes").collect();
-    const normalized = [];
-    for (const size of sizes) {
+    const normalized = sizes.map((size) => {
+      // Normalize "dayere" to "gerd" in memory (query functions cannot modify data)
       if (size.type === "dayere") {
-        await ctx.db.patch(size._id, { type: "gerd" });
-        size.type = "gerd";
+        return {
+          _id: size._id,
+          _creationTime: size._creationTime,
+          x: size.x,
+          y: size.y,
+          type: "gerd" as const,
+        };
       }
-      normalized.push(size);
-    }
+      return size;
+    });
     return normalized.sort((a, b) => {
-      if (a.type === b.type) {
-        if (a.x === b.x) return a.y - b.y;
-        return a.x - b.x;
+      if (a.x === b.x) {
+        if (a.y === b.y) {
+          return a.type.localeCompare(b.type);
+        }
+        return a.y - b.y;
       }
-      return a.type.localeCompare(b.type);
+      return a.x - b.x;
     });
   },
 });
