@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
+import { Link } from 'react-router-dom';
 import { api } from '../../convex/_generated/api';
 import { CustomerForm } from './CustomerForm';
 import { toPersianNumbers } from '../lib/utils';
@@ -110,7 +111,12 @@ export const CustomerList: React.FC = () => {
               {customers.map((customer, index) => (
                 <tr key={customer._id} className={index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-700'}>
                   <td className="border px-4 py-3 text-right border-gray-600 text-gray-200">
-                    {customer.name}
+                    <Link
+                      to={`/customers/${customer._id}`}
+                      className="text-blue-400 hover:underline font-medium"
+                    >
+                      {customer.name}
+                    </Link>
                   </td>
                   <td className="border px-4 py-3 text-center border-gray-600 text-gray-200">
                     {toPersianNumbers(customer.mobile)}
@@ -119,7 +125,13 @@ export const CustomerList: React.FC = () => {
                     {customer.nationalCode ? toPersianNumbers(customer.nationalCode) : '-'}
                   </td>
                   <td className="border px-4 py-3 text-center border-gray-600 text-gray-200">
-                    <div className="flex gap-2 justify-center">
+                    <div className="flex gap-2 justify-center flex-wrap">
+                      <Link
+                        to={`/customers/${customer._id}`}
+                        className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-500 text-sm"
+                      >
+                        جزئیات
+                      </Link>
                       <button
                         onClick={() => handleEdit(customer)}
                         className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"

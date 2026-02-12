@@ -5,6 +5,7 @@ import { SignOutButton } from '../SignOutButton';
 import { ChequeCalculator } from '../ChequeCalculator';
 import { UsersPage } from './UsersPage';
 import { CustomersPage } from './CustomersPage';
+import { CustomerDetailPage } from './CustomerDetailPage';
 import { SettingsPage } from './SettingsPage';
 import { RolesPage } from './RolesPage';
 import OrdersPage from './OrdersPage';
@@ -118,7 +119,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
     if (path === '/orders') return 'orders';
     if (path === '/catalog') return 'catalog';
     if (path === '/sizes') return 'sizes';
-    if (path === '/customers') return 'customers';
+    if (path.startsWith('/customers')) return 'customers';
     if (path === '/users') return 'users';
     if (path === '/roles') return 'roles';
     if (path === '/settings') return 'settings';
@@ -350,6 +351,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = () => {
             } />
             <Route path="/customers" element={
               hasPermission('customers:view') ? <CustomersPage /> : (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>
+                    <p className="text-gray-400">شما دسترسی لازم برای مشاهده این بخش را ندارید</p>
+                  </div>
+                </div>
+              )
+            } />
+            <Route path="/customers/:customerId" element={
+              hasPermission('customers:view') ? <CustomerDetailPage /> : (
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center">
                     <h2 className="text-2xl font-bold text-red-400 mb-2">دسترسی محدود</h2>

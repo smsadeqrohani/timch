@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { getInstallmentDueDateFromAgreement } from "./dateUtils";
 
 // Installment agreement status constants
@@ -167,6 +168,95 @@ export const getByOrderId = query({
       .collect();
 
     return { agreement, installments };
+  },
+});
+
+const agreementDocValidator = v.object({
+  _id: v.id("installmentAgreements"),
+  _creationTime: v.number(),
+  orderId: v.id("orders"),
+  customerId: v.id("customers"),
+  totalAmount: v.number(),
+  downPayment: v.number(),
+  principalAmount: v.number(),
+  numberOfInstallments: v.number(),
+  annualRate: v.number(),
+  monthlyRate: v.number(),
+  installmentAmount: v.number(),
+  totalInterest: v.number(),
+  totalPayment: v.number(),
+  guaranteeType: v.string(),
+  agreementDate: v.string(),
+  status: v.string(),
+  createdBy: v.id("users"),
+  approvedBy: v.optional(v.id("users")),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  approvedAt: v.optional(v.number()),
+});
+
+// Get agreements by customer ID
+export const getByCustomerId = query({
+  args: { customerId: v.id("customers") },
+  returns: v.array(agreementDocValidator),
+  handler: async (ctx, args) => {
+    const agreements = await ctx.db
+      .query("installmentAgreements")
+      .withIndex("byCustomerId", (q) => q.eq("customerId", args.customerId))
+      .collect();
+    return agreements.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
+const unpaidInstallmentValidator = v.object({
+  _id: v.id("installments"),
+  agreementId: v.id("installmentAgreements"),
+  orderId: v.id("orders"),
+  installmentNumber: v.number(),
+  dueDate: v.string(),
+  installmentAmount: v.number(),
+  status: v.string(),
+});
+
+// Get unpaid installments (pending/overdue) for a customer
+export const getUnpaidInstallmentsByCustomer = query({
+  args: { customerId: v.id("customers") },
+  returns: v.array(unpaidInstallmentValidator),
+  handler: async (ctx, args) => {
+    const agreements = await ctx.db
+      .query("installmentAgreements")
+      .withIndex("byCustomerId", (q) => q.eq("customerId", args.customerId))
+      .collect();
+    const paidStatus = "پرداخت شده";
+    const result: Array<{
+      _id: Id<"installments">;
+      agreementId: Id<"installmentAgreements">;
+      orderId: Id<"orders">;
+      installmentNumber: number;
+      dueDate: string;
+      installmentAmount: number;
+      status: string;
+    }> = [];
+    for (const ag of agreements) {
+      const installments = await ctx.db
+        .query("installments")
+        .withIndex("byAgreementId", (q) => q.eq("agreementId", ag._id))
+        .collect();
+      for (const inst of installments) {
+        if (inst.status === paidStatus) continue;
+        result.push({
+          _id: inst._id,
+          agreementId: inst.agreementId,
+          orderId: ag.orderId,
+          installmentNumber: inst.installmentNumber,
+          dueDate: inst.dueDate,
+          installmentAmount: inst.installmentAmount,
+          status: inst.status,
+        });
+      }
+    }
+    result.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    return result;
   },
 });
 

@@ -132,7 +132,7 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
     }
   };
 
-  // Check if customer needs national code
+  // کد ملی در همهٔ حالات الزامی است
   const needsNationalCode = () => {
     if (!orderDetails) return false;
     const customer = customers?.find(c => c._id === orderDetails.order.customerId);
@@ -203,8 +203,12 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
             </div>
             <div className="invoice-print-meta">
               <div className="invoice-print-meta-row">
-                <span className="invoice-print-label">شماره سفارش:</span>
-                <span className="invoice-print-value">{toPersianNumbers(orderDetails.order._id.slice(-8))}</span>
+                <span className="invoice-print-label">شماره فاکتور:</span>
+                <span className="invoice-print-value">
+                  {orderDetails.order.invoiceNumber != null
+                    ? toPersianNumbers(String(orderDetails.order.invoiceNumber))
+                    : toPersianNumbers(orderDetails.order._id.slice(-8))}
+                </span>
               </div>
               <div className="invoice-print-meta-row">
                 <span className="invoice-print-label">تاریخ:</span>
@@ -258,6 +262,12 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                 <span className="invoice-print-label">کد ملی:</span>
                 <span className="invoice-print-value">{customer?.nationalCode ? toPersianNumbers(customer.nationalCode) : '—'}</span>
               </div>
+              {orderDetails.order.deliveryType === 'ارسال' && orderDetails.order.deliveryAddress && (
+                <div className="invoice-print-field invoice-print-field-full">
+                  <span className="invoice-print-label">آدرس تحویل:</span>
+                  <span className="invoice-print-value">{orderDetails.order.deliveryAddress}</span>
+                </div>
+              )}
             </div>
           </section>
 
@@ -389,7 +399,7 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
               </div>
             </div>
 
-            <div className="mt-3 flex items-center gap-4">
+            <div className="mt-3 flex items-center gap-4 flex-wrap">
               <span className={`px-3 py-1 rounded text-sm font-medium ${getStatusBadgeClass(orderDetails.order.status)}`}>
                 {orderDetails.order.status}
               </span>
@@ -398,7 +408,19 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                   {orderDetails.order.paymentType}
                 </span>
               )}
+              {orderDetails.order.deliveryType && (
+                <span className="px-3 py-1 rounded text-sm font-medium bg-gray-600 text-gray-200">
+                  تحویل: {orderDetails.order.deliveryType}
+                </span>
+              )}
             </div>
+
+            {orderDetails.order.deliveryType === 'ارسال' && orderDetails.order.deliveryAddress && (
+              <div className="mt-3 p-3 bg-gray-800/50 rounded-lg">
+                <div className="font-medium text-gray-300 mb-1">آدرس تحویل:</div>
+                <div className="text-gray-400 text-sm">{orderDetails.order.deliveryAddress}</div>
+              </div>
+            )}
 
             {orderDetails.order.notes && (
               <div className="mt-3 p-3 bg-gray-800/50 rounded-lg">

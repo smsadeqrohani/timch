@@ -8,6 +8,8 @@ interface InstallmentAgreementFormProps {
   orderId: Id<"orders">;
   totalAmount: number;
   itemPrices?: Array<{ itemId: Id<"orderItems">; price: number }>;
+  deliveryType?: string;
+  deliveryAddress?: string;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
@@ -16,6 +18,8 @@ export default function InstallmentAgreementForm({
   orderId, 
   totalAmount,
   itemPrices = [],
+  deliveryType,
+  deliveryAddress,
   onSuccess, 
   onCancel 
 }: InstallmentAgreementFormProps) {
@@ -170,6 +174,8 @@ export default function InstallmentAgreementForm({
         agreementDate: formData.agreementDate,
         createdBy: currentUser._id,
         itemPrices: itemPrices.length > 0 ? itemPrices : undefined,
+        deliveryType: deliveryType || undefined,
+        deliveryAddress: deliveryAddress?.trim() || undefined,
       });
 
       try {

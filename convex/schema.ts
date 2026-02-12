@@ -10,6 +10,17 @@ const applicationTables = {
   })
     .index("byMobile", ["mobile"])
     .index("byNationalCode", ["nationalCode"]),
+
+  customerAddresses: defineTable({
+    customerId: v.id("customers"),
+    label: v.optional(v.string()), // e.g. "منزل", "محل کار"
+    address: v.string(),
+    isDefault: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byCustomerId", ["customerId"])
+    .index("byCustomerIdAndDefault", ["customerId", "isDefault"]),
   
   settings: defineTable({
     key: v.string(),
@@ -88,6 +99,9 @@ const applicationTables = {
     paymentType: v.optional(v.string()), // "نقدی", "اقساط"
     totalAmount: v.number(),
     notes: v.optional(v.string()),
+    deliveryType: v.optional(v.string()), // "حضوری" | "ارسال"
+    deliveryAddress: v.optional(v.string()), // آدرس تحویل (ثبت در زمان تایید)
+    invoiceNumber: v.number(), // شماره فاکتور ۶ رقمی از ۱۰۰۰۰۰ (الزامی)
     createdAt: v.number(),
     updatedAt: v.number(),
     cashierId: v.optional(v.id("users")), // Who processed the payment
@@ -97,7 +111,8 @@ const applicationTables = {
     .index("byCreatedBy", ["createdBy"])
     .index("byStatus", ["status"])
     .index("byCashierId", ["cashierId"])
-    .index("byCreatedAt", ["createdAt"]),
+    .index("byCreatedAt", ["createdAt"])
+    .index("byInvoiceNumber", ["invoiceNumber"]),
 
   orderItems: defineTable({
     orderId: v.id("orders"),

@@ -24,6 +24,9 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
   const [showPaymentConfirmation, setShowPaymentConfirmation] = useState(false);
   const [selectedPaymentType, setSelectedPaymentType] = useState<string>('');
   const [showInstallmentForm, setShowInstallmentForm] = useState(false);
+  const [deliveryType, setDeliveryType] = useState<'حضوری' | 'ارسال'>('حضوری');
+  const [selectedAddressId, setSelectedAddressId] = useState<Id<'customerAddresses'> | 'new' | null>(null);
+  const [newAddressText, setNewAddressText] = useState('');
 
   // Queries
   const currentUser = useQuery(api.auth.loggedInUser);
@@ -32,6 +35,10 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
   const companies = useQuery(api.companies.list);
   const orderDetails = useQuery(api.orders.getWithItems, { id: orderId });
   const customers = useQuery(api.customers.list);
+  const customerAddresses = useQuery(
+    api.customerAddresses.listByCustomer,
+    orderDetails?.order?.customerId ? { customerId: orderDetails.order.customerId } : 'skip'
+  );
 
   const customer = React.useMemo(() => {
     if (!orderDetails) return null;
@@ -43,7 +50,9 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
   // Mutations
   const updateOrderStatus = useMutation(api.orders.updateStatus);
   const updateCustomer = useMutation(api.customers.update);
+  const addCustomerAddress = useMutation(api.customerAddresses.add);
   const sendOrderSms = useAction(api.sms.sendEvent);
+  const [savingAddress, setSavingAddress] = useState(false);
 
   // Get product details with company and collection info
   const getProductDetails = (productId: Id<"products">) => {
@@ -85,12 +94,26 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
     }
   }, [customer, nationalCodeOverride]);
 
+  const resolvedDeliveryAddress = (): string => {
+    if (selectedAddressId === 'new') return newAddressText.trim();
+    if (selectedAddressId && customerAddresses?.length) {
+      const a = customerAddresses.find((x) => x._id === selectedAddressId);
+      return a?.address ?? '';
+    }
+    if (customerAddresses?.length) return ''; // انتخاب نشده
+    return newAddressText.trim(); // بدون لیست آدرس، فقط متن
+  };
+
   const continuePaymentFlow = (paymentType: string) => {
+    if (!resolvedDeliveryAddress()) {
+      setErrors({ general: 'آدرس تحویل/تماس الزامی است. لطفاً آدرس را انتخاب یا وارد کنید.' });
+      return;
+    }
+    setErrors({});
     if (paymentType === PAYMENT_TYPE.INSTALLMENT) {
       setShowInstallmentForm(true);
       return;
     }
-
     setSelectedPaymentType(paymentType);
     setShowPaymentConfirmation(true);
   };
@@ -136,7 +159,7 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
     }
   };
 
-  // Handle payment processing
+  // Handle payment processing — کد ملی در همهٔ حالات (نقد و اقساط) الزامی است
   const handleProcessPayment = async (paymentType: string) => {
     if (!orderId || !currentUser) {
       setErrors({ general: 'اطلاعات ناقص است' });
@@ -190,6 +213,8 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
         cashierId: currentUser._id,
         totalAmount: calculateTotalAmount,
         itemPrices: itemPricesArray,
+        deliveryType: deliveryType || undefined,
+        deliveryAddress: resolvedDeliveryAddress() || undefined,
       });
 
       if (paymentType === PAYMENT_TYPE.CASH) {
@@ -244,6 +269,8 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
         orderId={orderId}
         totalAmount={calculateTotalAmount}
         itemPrices={itemPricesArray}
+        deliveryType={deliveryType}
+        deliveryAddress={resolvedDeliveryAddress() || undefined}
         onSuccess={handleInstallmentSuccess}
         onCancel={handleInstallmentCancel}
       />
@@ -409,6 +436,91 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
             </div>
           </div>
 
+          {/* Delivery Type & Address — نوع تحویل مشخص؛ آدرس در همهٔ حالات الزامی است */}
+          <div className="space-y-4">
+            <h4 className="text-lg font-semibold text-gray-200">نوع تحویل</h4>
+            <div className="flex gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => { setDeliveryType('حضوری'); setErrors((e) => ({ ...e, general: '' })); }}
+                className={`px-4 py-2 rounded-lg font-medium ${
+                  deliveryType === 'حضوری' ? 'bg-blue-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                }`}
+              >
+                تحویل حضوری
+              </button>
+              <button
+                type="button"
+                onClick={() => { setDeliveryType('ارسال'); setErrors((e) => ({ ...e, general: '' })); }}
+                className={`px-4 py-2 rounded-lg font-medium ${
+                  deliveryType === 'ارسال' ? 'bg-blue-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                }`}
+              >
+                ارسال
+              </button>
+            </div>
+            <div className="border border-gray-600 rounded-lg p-4 bg-gray-800/30 space-y-3">
+              <label className="block text-sm font-medium text-gray-300">آدرس تحویل/تماس <span className="text-amber-400">(الزامی در همهٔ حالات)</span></label>
+                {customerAddresses && customerAddresses.length > 0 && (
+                  <select
+                    value={selectedAddressId === 'new' ? 'new' : selectedAddressId ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === 'new') setSelectedAddressId('new');
+                      else if (v) setSelectedAddressId(v as Id<'customerAddresses'>);
+                      else setSelectedAddressId(null);
+                    }}
+                    className="auth-input-field w-full max-w-md"
+                  >
+                    <option value="">انتخاب آدرس از لیست مشتری</option>
+                    {customerAddresses.map((a) => (
+                      <option key={a._id} value={a._id}>
+                        {a.label ? `${a.label}: ` : ''}{a.address.slice(0, 50)}{a.address.length > 50 ? '…' : ''}
+                      </option>
+                    ))}
+                    <option value="new">آدرس جدید (فقط این سفارش)</option>
+                  </select>
+                )}
+                {(selectedAddressId === 'new' || !customerAddresses?.length) && (
+                  <>
+                    <textarea
+                      placeholder="آدرس تحویل را وارد کنید"
+                      value={newAddressText}
+                      onChange={(e) => setNewAddressText(e.target.value)}
+                      rows={3}
+                      className="auth-input-field w-full"
+                      dir="rtl"
+                    />
+                    {orderDetails?.order.customerId && newAddressText.trim() && (
+                      <button
+                        type="button"
+                        disabled={savingAddress}
+                        onClick={async () => {
+                          setSavingAddress(true);
+                          try {
+                            const id = await addCustomerAddress({
+                              customerId: orderDetails.order.customerId,
+                              address: newAddressText.trim(),
+                              isDefault: !customerAddresses?.length,
+                            });
+                            setSelectedAddressId(id);
+                            setNewAddressText('');
+                          } catch (e: unknown) {
+                            setErrors({ general: e instanceof Error ? e.message : 'خطا در ذخیره آدرس' });
+                          } finally {
+                            setSavingAddress(false);
+                          }
+                        }}
+                        className="text-sm px-3 py-1.5 rounded-lg bg-gray-600 hover:bg-gray-500 text-gray-200"
+                      >
+                        {savingAddress ? 'در حال ذخیره…' : 'ذخیره در لیست آدرس‌های مشتری'}
+                      </button>
+                    )}
+                  </>
+                )}
+            </div>
+          </div>
+
           {/* Payment Options */}
           <div className="space-y-4">
             <h4 className="text-lg font-semibold text-gray-200">انتخاب نوع پرداخت</h4>
@@ -538,6 +650,23 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+
+                {/* Delivery */}
+                <div className="border border-gray-600 rounded-lg p-4 bg-gray-800/30">
+                  <h4 className="text-lg font-semibold mb-3 text-gray-200">تحویل</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">نوع تحویل:</span>
+                      <span className="text-gray-200 font-medium">{deliveryType}</span>
+                    </div>
+                    {resolvedDeliveryAddress() && (
+                      <div>
+                        <span className="text-gray-400">آدرس تحویل/تماس:</span>
+                        <p className="text-gray-200 mt-1">{resolvedDeliveryAddress()}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 

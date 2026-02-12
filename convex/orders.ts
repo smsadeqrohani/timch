@@ -36,6 +36,9 @@ export const list = query({
     paymentType: v.optional(v.string()),
     totalAmount: v.number(),
     notes: v.optional(v.string()),
+    invoiceNumber: v.optional(v.number()),
+    deliveryType: v.optional(v.string()),
+    deliveryAddress: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     cashierId: v.optional(v.id("users")),
@@ -61,6 +64,9 @@ export const getByStatus = query({
     paymentType: v.optional(v.string()),
     totalAmount: v.number(),
     notes: v.optional(v.string()),
+    invoiceNumber: v.optional(v.number()),
+    deliveryType: v.optional(v.string()),
+    deliveryAddress: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     cashierId: v.optional(v.id("users")),
@@ -88,6 +94,9 @@ export const getByCustomer = query({
     paymentType: v.optional(v.string()),
     totalAmount: v.number(),
     notes: v.optional(v.string()),
+    invoiceNumber: v.optional(v.number()),
+    deliveryType: v.optional(v.string()),
+    deliveryAddress: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     cashierId: v.optional(v.id("users")),
@@ -117,6 +126,9 @@ export const getWithItems = query({
         paymentType: v.optional(v.string()),
         totalAmount: v.number(),
         notes: v.optional(v.string()),
+        deliveryType: v.optional(v.string()),
+        deliveryAddress: v.optional(v.string()),
+        invoiceNumber: v.optional(v.number()), // در اسکیما الزامی است؛ برای سازگاری با داده قدیمی در خروجی اختیاری
         createdAt: v.number(),
         updatedAt: v.number(),
         cashierId: v.optional(v.id("users")),
@@ -184,6 +196,8 @@ export const getItemsForOrders = query({
   },
 });
 
+const INVOICE_NUMBER_START = 100000;
+
 // Create new order
 export const create = mutation({
   args: {
@@ -196,19 +210,24 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     
-    // Calculate total amount (for now, we'll use a simple calculation)
-    // In a real app, you'd calculate based on product prices
     const totalAmount = args.items.reduce((total, item) => {
       return total + (item.sizeX * item.sizeY * item.quantity);
     }, 0);
 
-    // Create the order
+    const lastOrder = await ctx.db
+      .query("orders")
+      .withIndex("byInvoiceNumber", (q) => q.gte("invoiceNumber", 0))
+      .order("desc")
+      .first();
+    const nextInvoiceNumber = lastOrder?.invoiceNumber != null ? lastOrder.invoiceNumber + 1 : INVOICE_NUMBER_START;
+
     const orderId = await ctx.db.insert("orders", {
       customerId: args.customerId,
       createdBy: args.createdBy,
       status: ORDER_STATUS.PENDING_CASHIER,
       totalAmount,
       notes: args.notes?.trim(),
+      invoiceNumber: nextInvoiceNumber,
       createdAt: now,
       updatedAt: now,
     });
@@ -238,10 +257,19 @@ export const updateStatus = mutation({
     cashierId: v.id("users"),
     totalAmount: v.optional(v.number()),
     itemPrices: v.optional(v.array(v.object({ itemId: v.id("orderItems"), price: v.number() }))),
+    deliveryType: v.optional(v.string()),
+    deliveryAddress: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const now = Date.now();
+
+    // هنگام تایید سفارش (پرداخت)، آدرس الزامی است
+    if (args.status === ORDER_STATUS.APPROVED) {
+      const addr = args.deliveryAddress?.trim();
+      if (!addr) throw new Error("آدرس تحویل/تماس الزامی است.");
+      if (args.deliveryAddress !== undefined) args.deliveryAddress = addr;
+    }
     
     const updateData: any = {
       status: args.status,
@@ -251,10 +279,9 @@ export const updateStatus = mutation({
       updatedAt: now,
     };
 
-    // Update total amount if provided
-    if (args.totalAmount !== undefined) {
-      updateData.totalAmount = args.totalAmount;
-    }
+    if (args.totalAmount !== undefined) updateData.totalAmount = args.totalAmount;
+    if (args.deliveryType !== undefined) updateData.deliveryType = args.deliveryType;
+    if (args.deliveryAddress !== undefined) updateData.deliveryAddress = args.deliveryAddress;
     
     await ctx.db.patch(args.id, updateData);
 
@@ -281,6 +308,8 @@ export const createInstallmentAgreement = mutation({
     agreementDate: v.string(),
     createdBy: v.id("users"),
     itemPrices: v.optional(v.array(v.object({ itemId: v.id("orderItems"), price: v.number() }))),
+    deliveryType: v.optional(v.string()),
+    deliveryAddress: v.optional(v.string()),
   },
   returns: v.id("installmentAgreements"),
   handler: async (ctx, args) => {
@@ -297,6 +326,11 @@ export const createInstallmentAgreement = mutation({
     if (!customer.nationalCode) {
       throw new Error("برای ثبت قرارداد اقساط، کد ملی مشتری باید ثبت شده باشد");
     }
+
+    // آدرس در همهٔ حالات الزامی است
+    const addr = args.deliveryAddress?.trim();
+    if (!addr) throw new Error("آدرس تحویل/تماس الزامی است.");
+    if (args.deliveryAddress !== undefined) args.deliveryAddress = addr;
 
     // Create the installment agreement directly
     const now = Date.now();
@@ -370,16 +404,17 @@ export const createInstallmentAgreement = mutation({
       });
     }
 
-    // Update order payment type to installment and status to approved
-    // Also update the total amount to match the installment agreement total
-    await ctx.db.patch(args.orderId, {
+    const orderPatch: Record<string, unknown> = {
       paymentType: PAYMENT_TYPE.INSTALLMENT,
       status: ORDER_STATUS.APPROVED,
-      totalAmount: args.totalAmount, // Use the total amount from the installment agreement
-      cashierId: args.createdBy, // The person who created the installment agreement
+      totalAmount: args.totalAmount,
+      cashierId: args.createdBy,
       processedAt: now,
       updatedAt: now,
-    });
+    };
+    if (args.deliveryType !== undefined) orderPatch.deliveryType = args.deliveryType;
+    if (args.deliveryAddress !== undefined) orderPatch.deliveryAddress = args.deliveryAddress;
+    await ctx.db.patch(args.orderId, orderPatch);
 
     // Update item prices when provided
     if (args.itemPrices && args.itemPrices.length > 0) {
@@ -493,6 +528,26 @@ export const remove = mutation({
   },
 });
 
+/** یک‌بار اجرا کنید تا برای همهٔ سفارش‌ها شماره فاکتور از ۱۰۰۰۰۰ به بعد (بر اساس تاریخ ایجاد) ست شود. */
+export const backfillInvoiceNumbers = mutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const orders = await ctx.db
+      .query("orders")
+      .withIndex("byCreatedAt", (q) => q)
+      .order("asc")
+      .collect();
+    const now = Date.now();
+    let next = INVOICE_NUMBER_START;
+    for (const order of orders) {
+      await ctx.db.patch(order._id, { invoiceNumber: next, updatedAt: now });
+      next += 1;
+    }
+    return next - INVOICE_NUMBER_START;
+  },
+});
+
 // Get orders statistics
 export const getStats = query({
   args: {},
@@ -530,6 +585,9 @@ export const getPendingForCashier = query({
     paymentType: v.optional(v.string()),
     totalAmount: v.number(),
     notes: v.optional(v.string()),
+    invoiceNumber: v.optional(v.number()),
+    deliveryType: v.optional(v.string()),
+    deliveryAddress: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     cashierId: v.optional(v.id("users")),
