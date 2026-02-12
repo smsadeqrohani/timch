@@ -21,6 +21,11 @@ function formatAmount(value?: number | null) {
   return numberFormatter.format(value);
 }
 
+/** شماره فاکتور برای نمایش در پیامک؛ در صورت نبود، شناسه سفارش */
+function orderDisplayCode(order: { invoiceNumber?: number | null; _id: Id<"orders"> }) {
+  return order.invoiceNumber != null ? String(order.invoiceNumber) : order._id;
+}
+
 async function fetchOrderAndCustomer(ctx: any, orderId: Id<"orders">) {
   const orderPayload = await ctx.runQuery(api.orders.getWithItems, { id: orderId });
   if (!orderPayload) {
@@ -123,9 +128,9 @@ export const sendEvent = action({
     let metadata: Record<string, string> = {};
 
     if (args.event === SMS_EVENTS.ORDER_CREATED) {
-      const orderCode = order._id;
-      message = `${customer.name} گرامی\n\nلطفاً به صندوق مراجعه کنید. کد سفارش شما: ${orderCode}`;
-      metadata.orderCode = orderCode;
+      const invoiceCode = orderDisplayCode(order);
+      message = `${customer.name} گرامی\n\nلطفاً به صندوق مراجعه کنید. شماره فاکتور شما: ${invoiceCode}`;
+      metadata.orderCode = invoiceCode;
     } else if (args.event === SMS_EVENTS.PAYMENT_CASH) {
       const amountText = formatAmount(order.totalAmount);
       message = `${customer.name} گرامی\n\nسفارش شما ثبت شد (نقدی)`;
@@ -146,10 +151,12 @@ export const sendEvent = action({
       const downPaymentText = formatAmount(agreementData.agreement.downPayment);
       const nextAmountText = nextInstallment ? formatAmount(nextInstallment.installmentAmount) : "نامشخص";
       const nextDate = nextInstallment?.dueDate ?? "نامشخص";
-      message = `${customer.name} گرامی\n\nپرداخت اقساطی ثبت شد. پیش‌پرداخت: ${downPaymentText} ریال. قسط بعدی: ${nextAmountText} ریال در تاریخ ${nextDate}`;
+      const invoiceCode = orderDisplayCode(order);
+      message = `${customer.name} گرامی\n\nپرداخت اقساطی ثبت شد. شماره فاکتور: ${invoiceCode}. پیش‌پرداخت: ${downPaymentText} ریال. قسط بعدی: ${nextAmountText} ریال در تاریخ ${nextDate}`;
       metadata.downPayment = downPaymentText;
       metadata.nextInstallmentAmount = nextAmountText;
       metadata.nextInstallmentDate = nextDate;
+      metadata.invoiceCode = invoiceCode;
     }
 
     const sendResult = await sendViaKavenegar(ctx, {
@@ -168,7 +175,7 @@ export const sendEvent = action({
       providerMessageId: sendResult.providerMessageId,
       cost: sendResult.cost ?? undefined,
       orderId: order._id,
-      orderCode: order._id,
+      orderCode: orderDisplayCode(order),
       customerId: customer._id,
       customerName: customer.name,
       errorCode: sendResult.success ? undefined : sendResult.providerStatus,
