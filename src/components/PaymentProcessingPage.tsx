@@ -179,12 +179,17 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
   // Process payment (separate function for reuse)
   const processPayment = async (paymentType: string) => {
     try {
+      const itemPricesArray = orderDetails!.items
+        .filter(item => (itemPrices[item._id] || 0) > 0)
+        .map(item => ({ itemId: item._id, price: itemPrices[item._id]! }));
+
       await updateOrderStatus({
         id: orderId,
         status: ORDER_STATUS.APPROVED,
         paymentType,
         cashierId: currentUser._id,
         totalAmount: calculateTotalAmount,
+        itemPrices: itemPricesArray,
       });
 
       if (paymentType === PAYMENT_TYPE.CASH) {
@@ -230,10 +235,15 @@ export default function PaymentProcessingPage({ orderId }: PaymentProcessingPage
 
   // Show installment form if needed
   if (showInstallmentForm) {
+    const itemPricesArray = orderDetails.items
+      .filter(item => (itemPrices[item._id] || 0) > 0)
+      .map(item => ({ itemId: item._id, price: itemPrices[item._id]! }));
+
     return (
       <InstallmentAgreementForm
         orderId={orderId}
         totalAmount={calculateTotalAmount}
+        itemPrices={itemPricesArray}
         onSuccess={handleInstallmentSuccess}
         onCancel={handleInstallmentCancel}
       />

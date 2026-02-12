@@ -7,13 +7,15 @@ import { formatJalaliDate, getCurrentJalaliDate } from '../utils/dateUtils';
 interface InstallmentAgreementFormProps {
   orderId: Id<"orders">;
   totalAmount: number;
+  itemPrices?: Array<{ itemId: Id<"orderItems">; price: number }>;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
 export default function InstallmentAgreementForm({ 
   orderId, 
-  totalAmount, 
+  totalAmount,
+  itemPrices = [],
   onSuccess, 
   onCancel 
 }: InstallmentAgreementFormProps) {
@@ -167,6 +169,7 @@ export default function InstallmentAgreementForm({
         guaranteeType: formData.guaranteeType,
         agreementDate: formData.agreementDate,
         createdBy: currentUser._id,
+        itemPrices: itemPrices.length > 0 ? itemPrices : undefined,
       });
 
       try {

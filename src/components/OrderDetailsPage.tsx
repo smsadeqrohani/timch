@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { ensureJalaliDisplay } from '../utils/dateUtils';
 import ImageHoverPreview from './ImageHoverPreview';
 import { findSizeByDimensions, formatSizeFromValues } from '../utils/sizeUtils';
+import logoImage from '../LOGO.png';
 
 interface OrderDetailsPageProps {
   orderId: Id<"orders">;
@@ -164,6 +165,23 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
     navigate('/orders');
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // Helper to get item unit price for display
+  const getItemUnitPrice = (item: typeof orderDetails.items[0]) => {
+    if (item.price != null) return item.price;
+    if (orderDetails && orderDetails.items.length === 1) return orderDetails.order.totalAmount / item.quantity;
+    return null;
+  };
+
+  // Helper to get item total for display
+  const getItemTotal = (item: typeof orderDetails.items[0]) => {
+    const unitPrice = getItemUnitPrice(item);
+    return unitPrice != null ? unitPrice * item.quantity : null;
+  };
+
   if (!orderDetails) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -172,9 +190,88 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
     );
   }
 
+  const customer = customers?.find(c => c._id === orderDetails.order.customerId);
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <div className="glass-card p-6 rounded-2xl shadow-xl">
+      {/* Printable Order Receipt - shown only when printing */}
+      <div className="print-only">
+        <div className="p-6 space-y-6">
+          <div className="grid grid-cols-2 gap-8 items-center mb-6">
+            <div className="flex justify-center">
+              <img src={logoImage} alt="تیمچه فرش" className="h-20 w-auto" />
+            </div>
+            <div className="text-right space-y-2">
+              <div className="flex justify-between">
+                <span>شماره سفارش:</span>
+                <span className="font-medium">{toPersianNumbers(orderDetails.order._id.slice(-8))}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>تاریخ:</span>
+                <span className="font-medium">{formatDate(orderDetails.order.createdAt)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>نوع پرداخت:</span>
+                <span className="font-medium">{orderDetails.order.paymentType || '-'}</span>
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-gray-300 pt-4">
+            <h3 className="font-bold mb-2">اطلاعات مشتری</h3>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div><span>نام:</span> <span className="font-medium">{customer?.name || '-'}</span></div>
+              <div><span>موبایل:</span> <span className="font-medium">{customer?.mobile ? toPersianNumbers(customer.mobile) : '-'}</span></div>
+              <div><span>کد ملی:</span> <span className="font-medium">{customer?.nationalCode ? toPersianNumbers(customer.nationalCode) : '-'}</span></div>
+            </div>
+          </div>
+          <div className="border-t border-gray-300 pt-4">
+            <h3 className="font-bold mb-2">آیتم‌های سفارش</h3>
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border px-2 py-2 text-right">ردیف</th>
+                  <th className="border px-2 py-2 text-right">محصول</th>
+                  <th className="border px-2 py-2 text-right">ابعاد</th>
+                  <th className="border px-2 py-2 text-right">تعداد</th>
+                  <th className="border px-2 py-2 text-right">قیمت پایه (ریال)</th>
+                  <th className="border px-2 py-2 text-right">مبلغ (ریال)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orderDetails.items.map((item, index) => {
+                  const productDetails = getProductDetails(item.productId);
+                  const unitPrice = getItemUnitPrice(item);
+                  const itemTotal = getItemTotal(item);
+                  return (
+                    <tr key={item._id}>
+                      <td className="border px-2 py-2 text-center">{toPersianNumbers(index + 1)}</td>
+                      <td className="border px-2 py-2">
+                        {productDetails ? `${productDetails.company.name} - ${productDetails.collection.name} - ${productDetails.product.code} (${item.color})` : '-'}
+                      </td>
+                      <td className="border px-2 py-2 text-center">
+                        {formatSizeFromValues(item.sizeX, item.sizeY, findSizeByDimensions(sizes, item.sizeX, item.sizeY)?.type ?? null)}
+                      </td>
+                      <td className="border px-2 py-2 text-center">{toPersianNumbers(item.quantity)}</td>
+                      <td className="border px-2 py-2 text-left" dir="ltr">
+                        {unitPrice != null ? toPersianNumbers(unitPrice.toLocaleString()) : '-'}
+                      </td>
+                      <td className="border px-2 py-2 text-left" dir="ltr">
+                        {itemTotal != null ? toPersianNumbers(itemTotal.toLocaleString()) : '-'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="border-t border-gray-300 pt-4 flex justify-between items-center">
+            <span className="font-bold">مبلغ کل:</span>
+            <span className="font-bold text-lg">{toPersianNumbers(orderDetails.order.totalAmount.toLocaleString())} ریال</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="glass-card p-6 rounded-2xl shadow-xl no-print">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-semibold text-gray-200">جزئیات سفارش</h3>
           <div className="flex gap-2">
@@ -208,12 +305,22 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                 </button>
               </>
             )}
-            <button
-              onClick={handleBackToList}
-              className="btn-secondary"
-            >
-              ← بازگشت به لیست
-            </button>
+            <div className="flex gap-2 items-center">
+              {orderDetails.order.status === ORDER_STATUS.APPROVED && (
+                <button
+                  onClick={handlePrint}
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm no-print"
+                >
+                  چاپ سفارش
+                </button>
+              )}
+              <button
+                onClick={handleBackToList}
+                className="btn-secondary"
+              >
+                ← بازگشت به لیست
+              </button>
+            </div>
           </div>
         </div>
 
@@ -436,13 +543,29 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                         <div className="font-medium text-gray-200">{toPersianNumbers(item.quantity)}</div>
                       </div>
                       <div className="text-center">
+                        <div className="text-gray-500">قیمت پایه</div>
+                        <div className="font-medium text-gray-400">
+                          {orderDetails.order.status === ORDER_STATUS.PENDING_CASHIER || orderDetails.order.status === ORDER_STATUS.CANCELLED
+                            ? '---'
+                            : (() => {
+                                const unitPrice = getItemUnitPrice(item);
+                                return unitPrice != null
+                                  ? `${toPersianNumbers(unitPrice.toLocaleString())} ریال`
+                                  : '---';
+                              })()}
+                        </div>
+                      </div>
+                      <div className="text-center">
                         <div className="text-gray-500">مبلغ</div>
                         <div className="font-bold text-lg text-gray-400">
                           {orderDetails.order.status === ORDER_STATUS.PENDING_CASHIER || orderDetails.order.status === ORDER_STATUS.CANCELLED
                             ? '---' 
-                            : item.price 
-                              ? `${toPersianNumbers((item.price * item.quantity).toLocaleString())} ریال`
-                              : '---'}
+                            : (() => {
+                                const itemTotal = getItemTotal(item);
+                                return itemTotal != null 
+                                  ? `${toPersianNumbers(itemTotal.toLocaleString())} ریال`
+                                  : '---';
+                              })()}
                         </div>
                       </div>
                     </div>

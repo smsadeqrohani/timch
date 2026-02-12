@@ -131,6 +131,7 @@ export const getWithItems = query({
         sizeX: v.number(),
         sizeY: v.number(),
         quantity: v.number(),
+        price: v.optional(v.number()),
       })),
     }),
     v.null()
@@ -235,6 +236,7 @@ export const updateStatus = mutation({
     paymentType: v.optional(v.string()),
     cashierId: v.id("users"),
     totalAmount: v.optional(v.number()),
+    itemPrices: v.optional(v.array(v.object({ itemId: v.id("orderItems"), price: v.number() }))),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -255,6 +257,13 @@ export const updateStatus = mutation({
     
     await ctx.db.patch(args.id, updateData);
 
+    // Update item prices when provided
+    if (args.itemPrices && args.itemPrices.length > 0) {
+      for (const { itemId, price } of args.itemPrices) {
+        await ctx.db.patch(itemId, { price });
+      }
+    }
+
     return null;
   },
 });
@@ -270,6 +279,7 @@ export const createInstallmentAgreement = mutation({
     guaranteeType: v.string(),
     agreementDate: v.string(),
     createdBy: v.id("users"),
+    itemPrices: v.optional(v.array(v.object({ itemId: v.id("orderItems"), price: v.number() }))),
   },
   returns: v.id("installmentAgreements"),
   handler: async (ctx, args) => {
@@ -371,6 +381,13 @@ export const createInstallmentAgreement = mutation({
       processedAt: now,
       updatedAt: now,
     });
+
+    // Update item prices when provided
+    if (args.itemPrices && args.itemPrices.length > 0) {
+      for (const { itemId, price } of args.itemPrices) {
+        await ctx.db.patch(itemId, { price });
+      }
+    }
 
     return agreementId;
   },

@@ -106,6 +106,7 @@ const applicationTables = {
     sizeX: v.number(), // X dimension
     sizeY: v.number(), // Y dimension
     quantity: v.number(),
+    price: v.optional(v.number()), // Price per unit (set when order is priced/approved)
   })
     .index("byOrderId", ["orderId"])
     .index("byProductId", ["productId"]),
