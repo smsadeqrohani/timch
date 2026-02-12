@@ -59,6 +59,28 @@ export const getInstallmentDate = (invoiceDate: dayjs.Dayjs, installmentNumber: 
   return addMonthsToJalali(invoiceDate, installmentNumber);
 };
 
+/** Normalize Jalali date string so dayjs can parse (Persian digits → ASCII) */
+const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+export const normalizeJalaliDateString = (str: string): string => {
+  if (!str) return '';
+  return str.replace(/[\u06F0-\u06F9]/g, (c) => String(PERSIAN_DIGITS.indexOf(c))).replace(/-/g, '/');
+};
+
+/**
+ * Get due date for display: use stored dueDate if present, else compute from agreementDate + installmentNumber.
+ * Use in all installment tables so old/future installments show the correct date.
+ */
+export const getDisplayDueDateForInstallment = (
+  agreementDate: string,
+  installment: { dueDate?: string | null; installmentNumber: number }
+): string => {
+  if (installment.dueDate && String(installment.dueDate).trim()) return installment.dueDate;
+  const normalized = normalizeJalaliDateString(agreementDate);
+  const base = parseJalaliDate(normalized);
+  if (!base) return '';
+  return getInstallmentDate(base, installment.installmentNumber).format('YYYY/MM/DD');
+};
+
 /**
  * Get current Jalali date
  */
@@ -146,50 +168,37 @@ export const getPersianWeekDayName = (dayIndex: number): string => {
 };
 
 /**
- * Format Jalali date for display with Persian numbers
+ * Format Jalali date for display with Persian numbers.
+ * Accepts both ASCII and Persian digit date strings.
  */
 export const formatJalaliDateWithPersianNumbers = (dateString: string): string => {
   if (!dateString) return '';
-  
-  const parts = dateString.split('/');
+  const normalized = normalizeJalaliDateString(dateString);
+  const parts = normalized.split('/');
   if (parts.length !== 3) return '';
-  
-  const year = parseInt(parts[0]);
-  const month = parseInt(parts[1]);
-  const day = parseInt(parts[2]);
-  
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
   if (isNaN(year) || isNaN(month) || isNaN(day)) return '';
-  
-  // Convert to Persian numerals without separators
   const persianYear = year.toLocaleString('fa-IR', { useGrouping: false });
   const persianMonth = month.toLocaleString('fa-IR', { useGrouping: false }).padStart(2, '۰');
   const persianDay = day.toLocaleString('fa-IR', { useGrouping: false }).padStart(2, '۰');
-  
   return `${persianYear}/${persianMonth}/${persianDay}`;
 };
 
 /**
  * Ensure a date string is displayed in Jalali format with Persian digits.
- * Accepts both Gregorian (YYYY/MM/DD) and Jalali strings.
+ * Accepts both Gregorian (YYYY/MM/DD) and Jalali strings, with ASCII or Persian digits.
  */
 export const ensureJalaliDisplay = (dateString: string): string => {
   if (!dateString) return '';
-
-  const normalized = dateString.replace(/-/g, '/');
+  const normalized = normalizeJalaliDateString(dateString);
   const parts = normalized.split('/');
-  if (parts.length !== 3) {
-    return formatJalaliDateWithPersianNumbers(normalized);
-  }
-
+  if (parts.length !== 3) return formatJalaliDateWithPersianNumbers(normalized);
   const year = parseInt(parts[0], 10);
   const month = parseInt(parts[1], 10);
   const day = parseInt(parts[2], 10);
-
-  if (isNaN(year) || isNaN(month) || isNaN(day)) {
-    return formatJalaliDateWithPersianNumbers(normalized);
-  }
-
-  // Detect Gregorian year and convert
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return formatJalaliDateWithPersianNumbers(normalized);
   if (year > 1600) {
     const gregorianDate = dayjs(`${parts[0]}-${parts[1]}-${parts[2]}`);
     if (gregorianDate.isValid()) {
@@ -197,6 +206,5 @@ export const ensureJalaliDisplay = (dateString: string): string => {
       return formatJalaliDateWithPersianNumbers(jalaliDate.format('YYYY/MM/DD'));
     }
   }
-
   return formatJalaliDateWithPersianNumbers(normalized);
 };

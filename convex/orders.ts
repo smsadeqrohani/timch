@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { formatJalaliDate } from "./dateUtils";
+import { getInstallmentDueDateFromAgreement } from "./dateUtils";
 
 // Order status constants
 export const ORDER_STATUS = {
@@ -164,6 +164,7 @@ export const getItemsForOrders = query({
           sizeX: v.number(),
           sizeY: v.number(),
           quantity: v.number(),
+          price: v.optional(v.number()),
         })
       ),
     })
@@ -354,10 +355,8 @@ export const createInstallmentAgreement = mutation({
       
       remainingBalance = Math.max(0, remainingBalance - principalAmountForThisMonth);
       
-      // Calculate due date (assuming monthly installments)
-      const dueDate = new Date();
-      dueDate.setMonth(dueDate.getMonth() + i);
-      const jalaliDueDate = formatJalaliDate(dueDate);
+      // Due date = agreement date + i months (first installment = 1 month after agreement)
+      const jalaliDueDate = getInstallmentDueDateFromAgreement(args.agreementDate, i);
       
       await ctx.db.insert("installments", {
         agreementId,

@@ -4,7 +4,7 @@ import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { ORDER_STATUS, PAYMENT_TYPE } from '../../convex/orders';
 import { useNavigate } from 'react-router-dom';
-import { ensureJalaliDisplay } from '../utils/dateUtils';
+import { ensureJalaliDisplay, getDisplayDueDateForInstallment } from '../utils/dateUtils';
 import ImageHoverPreview from './ImageHoverPreview';
 import { findSizeByDimensions, formatSizeFromValues } from '../utils/sizeUtils';
 import logoImage from '../LOGO.png';
@@ -194,47 +194,84 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
-      {/* Printable Order Receipt - shown only when printing */}
-      <div className="print-only">
-        <div className="p-6 space-y-6">
-          <div className="grid grid-cols-2 gap-8 items-center mb-6">
-            <div className="flex justify-center">
-              <img src={logoImage} alt="تیمچه فرش" className="h-20 w-auto" />
+      {/* Printable Order Receipt - shown only when printing. جدول اقساط هیچوقت در چاپ فاکتور نیست. */}
+      <div className="print-only invoice-print">
+        <div className="invoice-print-inner">
+          <header className="invoice-print-header">
+            <div className="invoice-print-logo">
+              <img src={logoImage} alt="تیمچه فرش" className="h-16 w-auto" />
             </div>
-            <div className="text-right space-y-2">
-              <div className="flex justify-between">
-                <span>شماره سفارش:</span>
-                <span className="font-medium">{toPersianNumbers(orderDetails.order._id.slice(-8))}</span>
+            <div className="invoice-print-meta">
+              <div className="invoice-print-meta-row">
+                <span className="invoice-print-label">شماره سفارش:</span>
+                <span className="invoice-print-value">{toPersianNumbers(orderDetails.order._id.slice(-8))}</span>
               </div>
-              <div className="flex justify-between">
-                <span>تاریخ:</span>
-                <span className="font-medium">{formatDate(orderDetails.order.createdAt)}</span>
+              <div className="invoice-print-meta-row">
+                <span className="invoice-print-label">تاریخ:</span>
+                <span className="invoice-print-value">{formatDate(orderDetails.order.createdAt)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>نوع پرداخت:</span>
-                <span className="font-medium">{orderDetails.order.paymentType || '-'}</span>
+              <div className="invoice-print-meta-row">
+                <span className="invoice-print-label">نوع پرداخت:</span>
+                <span className="invoice-print-value">{orderDetails.order.paymentType || '—'}</span>
               </div>
             </div>
-          </div>
-          <div className="border-t border-gray-300 pt-4">
-            <h3 className="font-bold mb-2">اطلاعات مشتری</h3>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div><span>نام:</span> <span className="font-medium">{customer?.name || '-'}</span></div>
-              <div><span>موبایل:</span> <span className="font-medium">{customer?.mobile ? toPersianNumbers(customer.mobile) : '-'}</span></div>
-              <div><span>کد ملی:</span> <span className="font-medium">{customer?.nationalCode ? toPersianNumbers(customer.nationalCode) : '-'}</span></div>
+          </header>
+
+          <section className="invoice-print-section invoice-print-seller">
+            <h3 className="invoice-print-section-title">اطلاعات فروشنده</h3>
+            <div className="invoice-print-grid">
+              <div className="invoice-print-field">
+                <span className="invoice-print-label">نام:</span>
+                <span className="invoice-print-value">سید محمود برقعی</span>
+              </div>
+              <div className="invoice-print-field">
+                <span className="invoice-print-label">تلفن:</span>
+                <span className="invoice-print-value">{toPersianNumbers('02537740440-2')}</span>
+              </div>
+              <div className="invoice-print-field">
+                <span className="invoice-print-label">کدملی:</span>
+                <span className="invoice-print-value"></span>
+              </div>
+              <div className="invoice-print-field">
+                <span className="invoice-print-label">شماره پروانه:</span>
+                <span className="invoice-print-value">{toPersianNumbers('0144917463')}</span>
+              </div>
+              <div className="invoice-print-field invoice-print-field-full">
+                <span className="invoice-print-label">آدرس:</span>
+                <span className="invoice-print-value">قم، خیابان صفائیه، نبش کوچه ۳۴، شماره ۸۸۸</span>
+              </div>
             </div>
-          </div>
-          <div className="border-t border-gray-300 pt-4">
-            <h3 className="font-bold mb-2">آیتم‌های سفارش</h3>
-            <table className="w-full border-collapse text-sm">
+          </section>
+
+          <section className="invoice-print-section">
+            <h3 className="invoice-print-section-title">اطلاعات مشتری</h3>
+            <div className="invoice-print-grid">
+              <div className="invoice-print-field">
+                <span className="invoice-print-label">نام:</span>
+                <span className="invoice-print-value">{customer?.name || '—'}</span>
+              </div>
+              <div className="invoice-print-field">
+                <span className="invoice-print-label">موبایل:</span>
+                <span className="invoice-print-value">{customer?.mobile ? toPersianNumbers(customer.mobile) : '—'}</span>
+              </div>
+              <div className="invoice-print-field">
+                <span className="invoice-print-label">کد ملی:</span>
+                <span className="invoice-print-value">{customer?.nationalCode ? toPersianNumbers(customer.nationalCode) : '—'}</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="invoice-print-section">
+            <h3 className="invoice-print-section-title">آیتم‌های سفارش</h3>
+            <table className="invoice-print-table">
               <thead>
-                <tr className="bg-gray-100">
-                  <th className="border px-2 py-2 text-right">ردیف</th>
-                  <th className="border px-2 py-2 text-right">محصول</th>
-                  <th className="border px-2 py-2 text-right">ابعاد</th>
-                  <th className="border px-2 py-2 text-right">تعداد</th>
-                  <th className="border px-2 py-2 text-right">قیمت پایه (ریال)</th>
-                  <th className="border px-2 py-2 text-right">مبلغ (ریال)</th>
+                <tr>
+                  <th>ردیف</th>
+                  <th>محصول</th>
+                  <th>ابعاد</th>
+                  <th>تعداد</th>
+                  <th>قیمت پایه (ریال)</th>
+                  <th>مبلغ (ریال)</th>
                 </tr>
               </thead>
               <tbody>
@@ -244,30 +281,31 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                   const itemTotal = getItemTotal(item);
                   return (
                     <tr key={item._id}>
-                      <td className="border px-2 py-2 text-center">{toPersianNumbers(index + 1)}</td>
-                      <td className="border px-2 py-2">
-                        {productDetails ? `${productDetails.company.name} - ${productDetails.collection.name} - ${productDetails.product.code} (${item.color})` : '-'}
+                      <td className="invoice-print-td-num">{toPersianNumbers(index + 1)}</td>
+                      <td className="invoice-print-td-product">
+                        {productDetails ? `${productDetails.company.name} - ${productDetails.collection.name} - ${productDetails.product.code} (${item.color})` : '—'}
                       </td>
-                      <td className="border px-2 py-2 text-center">
+                      <td className="invoice-print-td-num">
                         {formatSizeFromValues(item.sizeX, item.sizeY, findSizeByDimensions(sizes, item.sizeX, item.sizeY)?.type ?? null)}
                       </td>
-                      <td className="border px-2 py-2 text-center">{toPersianNumbers(item.quantity)}</td>
-                      <td className="border px-2 py-2 text-left" dir="ltr">
-                        {unitPrice != null ? toPersianNumbers(unitPrice.toLocaleString()) : '-'}
+                      <td className="invoice-print-td-num">{toPersianNumbers(item.quantity)}</td>
+                      <td className="invoice-print-td-amount" dir="ltr">
+                        {unitPrice != null ? toPersianNumbers(unitPrice.toLocaleString()) : '—'}
                       </td>
-                      <td className="border px-2 py-2 text-left" dir="ltr">
-                        {itemTotal != null ? toPersianNumbers(itemTotal.toLocaleString()) : '-'}
+                      <td className="invoice-print-td-amount" dir="ltr">
+                        {itemTotal != null ? toPersianNumbers(itemTotal.toLocaleString()) : '—'}
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-          </div>
-          <div className="border-t border-gray-300 pt-4 flex justify-between items-center">
-            <span className="font-bold">مبلغ کل:</span>
-            <span className="font-bold text-lg">{toPersianNumbers(orderDetails.order.totalAmount.toLocaleString())} ریال</span>
-          </div>
+          </section>
+
+          <footer className="invoice-print-footer">
+            <span className="invoice-print-total-label">مبلغ کل:</span>
+            <span className="invoice-print-total-value">{toPersianNumbers(orderDetails.order.totalAmount.toLocaleString())} ریال</span>
+          </footer>
         </div>
       </div>
 
@@ -403,7 +441,7 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
 
           {/* Installment Agreement Info */}
           {installmentAgreement && orderDetails.order.paymentType === PAYMENT_TYPE.INSTALLMENT && (
-            <div className="border border-gray-600 rounded-lg p-4">
+            <div className="border border-gray-600 rounded-lg p-4 do-not-print-installment">
               <h4 className="text-lg font-semibold mb-3 text-gray-200">اطلاعات قرارداد اقساط</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="space-y-2">
@@ -464,7 +502,7 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                       {installmentAgreement.installments.map((installment) => (
                         <tr key={installment._id} className="border-b border-gray-700">
                           <td className="py-2 text-gray-200">{toPersianNumbers(installment.installmentNumber)}</td>
-                          <td className="py-2 text-gray-200">{ensureJalaliDisplay(installment.dueDate)}</td>
+                          <td className="py-2 text-gray-200">{ensureJalaliDisplay(getDisplayDueDateForInstallment(installmentAgreement.agreement.agreementDate, installment))}</td>
                           <td className="py-2 text-gray-200">{toPersianNumbers(installment.installmentAmount.toLocaleString())}</td>
                           <td className="py-2 text-gray-200">{toPersianNumbers(installment.interestAmount.toLocaleString())}</td>
                           <td className="py-2 text-gray-200">{toPersianNumbers(installment.principalAmount.toLocaleString())}</td>

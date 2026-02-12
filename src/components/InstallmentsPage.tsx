@@ -5,7 +5,9 @@ import { Id } from '../../convex/_generated/dataModel';
 import { useNavigate } from 'react-router-dom';
 import type { Dayjs } from 'dayjs';
 import { PersianDatePicker } from './PersianDatePicker';
-import { ensureJalaliDisplay, parseJalaliDate, gregorianToJalali, formatJalaliDateWithPersianNumbers } from '../utils/dateUtils';
+import { ensureJalaliDisplay, parseJalaliDate, gregorianToJalali, formatJalaliDateWithPersianNumbers, getDisplayDueDateForInstallment } from '../utils/dateUtils';
+import { toPersianNumbers } from '../lib/utils';
+import logoImage from '../LOGO.png';
 
 const formatRealPaymentDate = (timestamp?: number | null) => {
   if (!timestamp) return '—';
@@ -205,12 +207,12 @@ export default function InstallmentsPage() {
         </div>
       </div>
 
-      {/* Agreement Details Modal */}
+      {/* Agreement Details Modal - overlay از بالای صفحه بدون فاصله، اسکرول درست */}
       {selectedAgreement && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[80] p-4">
-          <div className="w-full max-w-4xl">
-            <div className="glass-card p-6 rounded-2xl shadow-xl">
-              <div className="flex justify-between items-center mb-4">
+        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-90 z-[80] flex items-start justify-center overflow-y-auto px-4 pb-4">
+          <div className="w-full max-w-4xl min-h-0 flex flex-col py-4">
+            <div className="glass-card p-6 rounded-2xl shadow-xl flex flex-col max-h-[90vh] min-h-0">
+              <div className="flex justify-between items-center mb-4 flex-shrink-0">
                 <h3 className="text-xl font-semibold text-gray-200">جزئیات قرارداد اقساط</h3>
                 <button
                   onClick={() => setSelectedAgreement(null)}
@@ -219,14 +221,12 @@ export default function InstallmentsPage() {
                   ✕
                 </button>
               </div>
-              
-              <InstallmentAgreementDetails 
-                agreementId={selectedAgreement} 
-                onPaymentSuccess={() => {
-                  setSelectedAgreement(null);
-                  // Refresh the page or update data
-                }}
-              />
+              <div className="overflow-y-auto min-h-0 flex-1">
+                <InstallmentAgreementDetails 
+                  agreementId={selectedAgreement} 
+                  onPaymentSuccess={() => setSelectedAgreement(null)}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -375,6 +375,12 @@ function InstallmentAgreementDetails({
     return amount.toLocaleString('fa-IR') + ' ریال';
   };
 
+  const handlePrint = () => window.print();
+  const customer = customers?.find(c => c._id === agreement.customerId);
+
+  const getDisplayDueDate = (installment: { dueDate?: string; installmentNumber: number }) =>
+    getDisplayDueDateForInstallment(agreement.agreementDate, installment);
+
   // Calculate statistics
   const paidInstallments = installments.filter(i => i.status === 'پرداخت شده').length;
   const pendingInstallments = installments.filter(i => i.status === 'در انتظار پرداخت').length;
@@ -385,8 +391,123 @@ function InstallmentAgreementDetails({
 
   return (
     <div className="space-y-6">
+      {/* چاپ قرارداد - فقط موقع چاپ دیده می‌شود */}
+      <div className="print-only">
+        <div className="glass-card p-8 rounded-2xl shadow-xl mb-6">
+          <div className="mb-6">
+            <div className="grid grid-cols-2 gap-8 items-center">
+              <div className="flex justify-center">
+                <img src={logoImage} alt="تیمچه فرش" className="h-20 w-auto" />
+              </div>
+              <div className="text-right space-y-2">
+                <div className="flex justify-between">
+                  <span>تاریخ قرارداد:</span>
+                  <span className="font-medium">{ensureJalaliDisplay(agreement.agreementDate)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>نوع ضمانت:</span>
+                  <span className="font-medium">{agreement.guaranteeType === 'cheque' ? 'چک' : 'طلا'}</span>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-gray-300 mt-4 pt-2" />
+          </div>
+          <h2 className="text-lg font-semibold mb-4">خلاصه قرارداد</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print-grid-cols-2">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>نام خریدار:</span>
+                <span className="font-medium">{customer?.name || getCustomerName(agreement.customerId)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>مبلغ کل:</span>
+                <span className="font-medium">{toPersianNumbers(agreement.totalAmount.toLocaleString())} ریال</span>
+              </div>
+              <div className="flex justify-between">
+                <span>پیش‌پرداخت:</span>
+                <span className="font-medium">{toPersianNumbers(agreement.downPayment.toLocaleString())} ریال</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>مانده برای اقساط:</span>
+                <span className="font-medium">{toPersianNumbers(agreement.principalAmount.toLocaleString())} ریال</span>
+              </div>
+              <div className="flex justify-between">
+                <span>تعداد اقساط:</span>
+                <span className="font-medium">{toPersianNumbers(agreement.numberOfInstallments.toString())}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>نرخ سود سالانه:</span>
+                <span className="font-medium">{toPersianNumbers(String(agreement.annualRate))}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span>جمع سود:</span>
+                <span className="font-medium">{toPersianNumbers(agreement.totalInterest.toLocaleString())} ریال</span>
+              </div>
+              <div className="flex justify-between">
+                <span>جمع کل پرداختی:</span>
+                <span className="font-medium">{toPersianNumbers(agreement.totalPayment.toLocaleString())} ریال</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="glass-card p-8 rounded-2xl shadow-xl mb-6">
+          <h2 className="text-lg font-semibold mb-4">جدول اقساط</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-700">
+                  <th className="border px-4 py-2 text-right border-gray-600">شماره قسط</th>
+                  <th className="border px-4 py-2 text-right border-gray-600">تاریخ سررسید</th>
+                  <th className="border px-4 py-2 text-right border-gray-600">مبلغ قسط</th>
+                  <th className="border px-4 py-2 text-right border-gray-600">تاریخ پرداخت</th>
+                </tr>
+              </thead>
+              <tbody>
+                {installments.map((inst, index) => (
+                  <tr key={inst._id} className={index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-700'}>
+                    <td className="border px-4 py-2 text-center border-gray-600">{toPersianNumbers(inst.installmentNumber.toString())}</td>
+                    <td className="border px-4 py-2 text-center border-gray-600">{ensureJalaliDisplay(getDisplayDueDate(inst))}</td>
+                    <td className="border px-4 py-2 text-center border-gray-600">{toPersianNumbers(inst.installmentAmount.toLocaleString())}</td>
+                    <td className="border px-4 py-2 text-center border-gray-600">
+                      {inst.status === 'پرداخت شده' && inst.paidAt ? formatRealPaymentDate(inst.paidAt) : ''}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="glass-card p-8 rounded-2xl shadow-xl print-only">
+          <ul className="space-y-3 text-sm text-gray-700" dir="rtl">
+            <li className="flex items-start">
+              <span className="text-gray-500 mr-2 mt-1">•</span>
+              <span>خواهشمند است مبلغ اقساط را به شماره‌کارت <span className="font-bold underline">{toPersianNumbers('4620-0578-0610-5047')}</span> به‌نام آقای سیدمحمود برقعی واریز نمایید.</span>
+            </li>
+            <li className="flex items-start">
+              <span className="text-gray-500 mr-2 mt-1">•</span>
+              <span>بعد از واریز هر قسط، اطلاع واریزی را همراه با شماره صفحه اقساط به شماره <span className="font-bold underline">{toPersianNumbers('09352334898')}</span> به‌صورت پیامک یا واتساپ جهت ثبت در حساب ارسال کنید.</span>
+            </li>
+            <li className="flex items-start">
+              <span className="text-gray-500 mr-2 mt-1">•</span>
+              <span>وجه الضمانه اقساط تا تسویه حساب کامل نزد فروشگاه باقی می‌ماند. از درخواست استرداد آن قبل از موعد خودداری فرمایید.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="no-print flex justify-end mb-4">
+        <button
+          onClick={handlePrint}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm"
+        >
+          چاپ قرارداد
+        </button>
+      </div>
+
       {/* Agreement Summary */}
-      <div className="p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+      <div className="p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg no-print">
         <h4 className="text-lg font-semibold text-blue-400 mb-3">خلاصه قرارداد</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div className="space-y-2">
@@ -429,7 +550,7 @@ function InstallmentAgreementDetails({
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 no-print">
         <div className="text-center p-4 bg-green-900/30 rounded-lg border border-green-500/30">
           <div className="text-2xl font-bold text-green-400">{paidInstallments}</div>
           <div className="text-sm text-green-300">پرداخت شده</div>
@@ -449,7 +570,7 @@ function InstallmentAgreementDetails({
       </div>
 
       {/* Installments Table */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto no-print">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-600">
@@ -466,7 +587,7 @@ function InstallmentAgreementDetails({
             {/* Down Payment Row */}
             <tr className="border-b border-gray-700 bg-blue-900/20">
               <td className="py-2 text-gray-200 font-medium">پیش‌پرداخت</td>
-              <td className="py-2 text-gray-200">{agreement.agreementDate}</td>
+              <td className="py-2 text-gray-200">{ensureJalaliDisplay(agreement.agreementDate)}</td>
               <td className="py-2 text-gray-200">{ensureJalaliDisplay(agreement.agreementDate)}</td>
               <td className="py-2 text-gray-200 font-bold text-blue-400">{formatCurrency(agreement.downPayment)}</td>
               <td className="py-2 text-gray-200">-</td>
@@ -484,7 +605,7 @@ function InstallmentAgreementDetails({
             {installments.map((installment) => (
               <tr key={installment._id} className="border-b border-gray-700">
                 <td className="py-2 text-gray-200">{installment.installmentNumber}</td>
-                <td className="py-2 text-gray-200">{ensureJalaliDisplay(installment.dueDate)}</td>
+                <td className="py-2 text-gray-200">{ensureJalaliDisplay(getDisplayDueDate(installment))}</td>
                 <td className="py-2 text-gray-200">
                   {installment.status === 'پرداخت شده'
                     ? formatRealPaymentDate(installment.paidAt)
@@ -523,7 +644,7 @@ function InstallmentAgreementDetails({
 
       {/* Payment Form Modal */}
       {showPaymentForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[90] p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[90] p-4 no-print">
           <div className="w-full max-w-md">
             <div className="glass-card p-6 rounded-2xl shadow-xl">
               <div className="flex justify-between items-center mb-4">

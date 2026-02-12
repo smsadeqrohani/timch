@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { formatJalaliDate } from "./dateUtils";
+import { getInstallmentDueDateFromAgreement } from "./dateUtils";
 
 // Installment agreement status constants
 export const AGREEMENT_STATUS = {
@@ -88,10 +88,8 @@ export const create = mutation({
       
       remainingBalance = Math.max(0, remainingBalance - principalAmountForThisMonth);
       
-      // Calculate due date (assuming monthly installments)
-      const dueDate = new Date();
-      dueDate.setMonth(dueDate.getMonth() + i);
-      const jalaliDueDate = formatJalaliDate(dueDate);
+      // Due date = agreement date + i months (first installment = 1 month after agreement)
+      const jalaliDueDate = getInstallmentDueDateFromAgreement(args.agreementDate, i);
       
       await ctx.db.insert("installments", {
         agreementId,
@@ -228,6 +226,39 @@ export const getWithInstallments = query({
       .collect();
 
     return { agreement, installments };
+  },
+});
+
+/** Backfill due dates for installments from agreement date (for old agreements where dueDate was empty). */
+export const backfillDueDates = mutation({
+  args: {
+    agreementId: v.optional(v.id("installmentAgreements")),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    let agreementList;
+    if (args.agreementId) {
+      const a = await ctx.db.get(args.agreementId);
+      agreementList = a ? [a] : [];
+    } else {
+      agreementList = await ctx.db.query("installmentAgreements").collect();
+    }
+    let updated = 0;
+    for (const agreement of agreementList) {
+      if (!agreement?.agreementDate) continue;
+      const installments = await ctx.db
+        .query("installments")
+        .withIndex("byAgreementId", (q) => q.eq("agreementId", agreement._id))
+        .collect();
+      for (const inst of installments) {
+        const dueDate = getInstallmentDueDateFromAgreement(agreement.agreementDate, inst.installmentNumber);
+        if (dueDate && dueDate !== inst.dueDate) {
+          await ctx.db.patch(inst._id, { dueDate });
+          updated += 1;
+        }
+      }
+    }
+    return updated;
   },
 });
 
