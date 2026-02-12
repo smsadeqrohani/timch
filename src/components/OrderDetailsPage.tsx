@@ -60,15 +60,20 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
     }
   };
 
-  // Format date
+  // Format date — بدون کلمه «ساعت»، با خط تیره بین تاریخ و ساعت
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('fa-IR', {
+    const d = new Date(timestamp);
+    const datePart = d.toLocaleDateString('fa-IR', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+    });
+    const timePart = d.toLocaleTimeString('fa-IR', {
       hour: '2-digit',
       minute: '2-digit',
+      hour12: false,
     });
+    return `${datePart} - ${timePart}`;
   };
 
   // Convert numbers to Persian digits
@@ -376,7 +381,7 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
           {/* Order Summary */}
           <div className="border border-gray-600 rounded-lg p-4">
             <h4 className="text-lg font-semibold mb-3 text-gray-200">خلاصه سفارش</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="text-center p-3 bg-blue-900/30 rounded-lg border border-blue-500/30">
                 <div className="text-xl font-bold text-blue-400">
                   {orderDetails.order.status === ORDER_STATUS.PENDING_CASHIER || orderDetails.order.status === ORDER_STATUS.CANCELLED
@@ -396,6 +401,14 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                   {formatDate(orderDetails.order.createdAt)}
                 </div>
                 <div className="text-sm text-orange-300">تاریخ ثبت</div>
+              </div>
+              <div className="text-center p-3 bg-purple-900/30 rounded-lg border border-purple-500/30">
+                <div className="text-xl font-bold text-purple-400" dir="ltr">
+                  {orderDetails.order.invoiceNumber != null
+                    ? toPersianNumbers(String(orderDetails.order.invoiceNumber))
+                    : toPersianNumbers(orderDetails.order._id.slice(-8))}
+                </div>
+                <div className="text-sm text-purple-300">شماره فاکتور</div>
               </div>
             </div>
 
